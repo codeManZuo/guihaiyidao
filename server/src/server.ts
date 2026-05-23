@@ -2,10 +2,12 @@ import { WebSocketServer, type RawData, type WebSocket } from "ws";
 import { decode, encode, type StateMessageV1 } from "./protocol";
 import { RoomStore } from "./rooms";
 import { applyInput, tick } from "./gameSim";
+import { loadGameConfigFromRepoRoot } from "./config/loadConfig";
 
 const port = Number(process.env.PORT || 8787);
 const wss = new WebSocketServer({ port });
-const store = new RoomStore();
+const config = loadGameConfigFromRepoRoot();
+const store = new RoomStore(config);
 
 type Conn = { roomId: string; playerId: string };
 const conns = new WeakMap<WebSocket, Conn>();

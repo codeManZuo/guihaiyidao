@@ -7,6 +7,8 @@ import { OnlineClient } from "./net/OnlineClient";
 import { createInitialFlow, reduceFlow, type FlowState } from "./ui/flow";
 import { createOverlays, showHudOnline, showHudSingle, showMenu, showResult, type Overlays } from "./ui/overlays";
 import { attachOverlayActions } from "./ui/actions";
+import { defaultGameConfig, type GameConfig } from "./config/gameConfig";
+import { loadGameConfig } from "./config/loadConfig";
 
 export class GameApp {
   private overlays: Overlays;
@@ -14,7 +16,8 @@ export class GameApp {
   private loop: FixedTimestepLoop;
   private cleanupInput: (() => void) | null = null;
   private cleanupOverlays: (() => void) | null = null;
-  private single = createSinglePlayerRuntime(42);
+  private config: GameConfig = defaultGameConfig();
+  private single = createSinglePlayerRuntime(42, this.config);
   private audio = new AudioBank();
   private vibrationEnabled = true;
   private online: OnlineClient | null = null;
@@ -28,6 +31,10 @@ export class GameApp {
 
     this.flow = createInitialFlow({ url: window.location.href });
     if (this.flow.screen === "online") this.connectOnline();
+
+    loadGameConfig().then((cfg) => {
+      this.config = cfg;
+    });
 
     this.loop = new FixedTimestepLoop(
       {
@@ -57,8 +64,9 @@ export class GameApp {
             const s = this.online?.getState();
             if (s?.type === "state") {
               this.renderer.renderOnline(s);
-              const p1Ratio = s.p1.timeMs <= 0 ? 0 : s.p1.timeMs / 5000;
-              const p2Ratio = s.p2.timeMs <= 0 ? 0 : s.p2.timeMs / 5000;
+              const max = this.config.time.maxMs || 1;
+              const p1Ratio = s.p1.timeMs <= 0 ? 0 : s.p1.timeMs / max;
+              const p2Ratio = s.p2.timeMs <= 0 ? 0 : s.p2.timeMs / max;
               showHudOnline(this.overlays, {
                 roomId: this.flow.roomId,
                 p1: { score: s.p1.score, timeRatio01: p1Ratio, status: s.p1.status },
@@ -95,7 +103,7 @@ export class GameApp {
       onSingle: () => {
         this.online?.disconnect();
         this.flow = reduceFlow(this.flow, { type: "menu.single" });
-        this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0);
+        this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0, this.config);
       },
       onOnline: ({ roomId, playerId }) => {
         const wsUrl = this.flow.screen === "online" ? this.flow.wsUrl : "ws://localhost:8787";
@@ -104,7 +112,7 @@ export class GameApp {
       },
       onRestart: () => {
         if (this.flow.screen === "single") {
-          this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0);
+          this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0, this.config);
           return;
         }
         if (this.flow.screen === "online") {

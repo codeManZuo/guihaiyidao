@@ -3,8 +3,8 @@ import { ObstacleGenerator } from "./ObstacleGenerator";
 
 describe("ObstacleGenerator", () => {
   it("is deterministic given same seed", () => {
-    const a = new ObstacleGenerator(123);
-    const b = new ObstacleGenerator(123);
+    const a = new ObstacleGenerator(123, { noneChance: 0.14, avoidSameSide: true });
+    const b = new ObstacleGenerator(123, { noneChance: 0.14, avoidSameSide: true });
 
     const seqA = Array.from({ length: 20 }, () => a.next());
     const seqB = Array.from({ length: 20 }, () => b.next());
@@ -13,7 +13,7 @@ describe("ObstacleGenerator", () => {
   });
 
   it("never returns both sides at once (only left/right/none)", () => {
-    const gen = new ObstacleGenerator(7);
+    const gen = new ObstacleGenerator(7, { noneChance: 0.14, avoidSameSide: true });
     for (let i = 0; i < 200; i += 1) {
       const o = gen.next();
       expect(["left", "right", null]).toContain(o);

@@ -1,5 +1,6 @@
 import type { WebSocket } from "ws";
 import { createMatchSim, startMatch } from "./gameSim";
+import type { GameConfig } from "./config/gameConfig";
 
 export type Room = {
   roomId: string;
@@ -9,11 +10,12 @@ export type Room = {
 
 export class RoomStore {
   private rooms = new Map<string, Room>();
+  constructor(private config: GameConfig) {}
 
   getOrCreate(roomId: string): Room {
     const existing = this.rooms.get(roomId);
     if (existing) return existing;
-    const room: Room = { roomId, sockets: new Map(), sim: createMatchSim(hashSeed(roomId)) };
+    const room: Room = { roomId, sockets: new Map(), sim: createMatchSim(hashSeed(roomId), this.config) };
     this.rooms.set(roomId, room);
     return room;
   }

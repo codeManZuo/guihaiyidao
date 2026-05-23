@@ -1,4 +1,5 @@
 import type { Side } from "./protocol";
+import type { GameConfig } from "./config/gameConfig";
 
 export type PlayerSim = {
   status: "alive" | "dead";
@@ -15,17 +16,37 @@ export type MatchSim = {
   p2: PlayerSim;
   maxTimeMs: number;
   addTimePerChopMs: number;
+  decayScale: number;
+  noneChance: number;
+  avoidSameSide: boolean;
   rng: number;
 };
 
-export function createMatchSim(seed: number): MatchSim {
+export function createMatchSim(seed: number, config: GameConfig): MatchSim {
   const sim: MatchSim = {
     status: "lobby",
-    maxTimeMs: 5000,
-    addTimePerChopMs: 250,
+    maxTimeMs: config.time.maxMs,
+    addTimePerChopMs: config.time.addPerChopMs,
+    decayScale: config.time.decayScale,
+    noneChance: config.obstacle.noneChance,
+    avoidSameSide: config.obstacle.avoidSameSide,
     rng: seed | 0,
-    p1: { status: "alive", score: 0, timeMs: 5000, side: "left", obstacleSide: null, lastObstacleSide: null },
-    p2: { status: "alive", score: 0, timeMs: 5000, side: "left", obstacleSide: null, lastObstacleSide: null }
+    p1: {
+      status: "alive",
+      score: 0,
+      timeMs: config.time.startMs,
+      side: "left",
+      obstacleSide: null,
+      lastObstacleSide: null
+    },
+    p2: {
+      status: "alive",
+      score: 0,
+      timeMs: config.time.startMs,
+      side: "left",
+      obstacleSide: null,
+      lastObstacleSide: null
+    }
   };
   sim.p1.obstacleSide = nextObstacle(sim, sim.p1);
   sim.p2.obstacleSide = nextObstacle(sim, sim.p2);
@@ -38,9 +59,10 @@ export function startMatch(sim: MatchSim): void {
 
 export function tick(sim: MatchSim, dtMs: number): void {
   if (sim.status !== "playing") return;
+  const scaled = dtMs * sim.decayScale;
   for (const p of [sim.p1, sim.p2]) {
     if (p.status === "dead") continue;
-    p.timeMs = Math.max(0, p.timeMs - dtMs);
+    p.timeMs = Math.max(0, p.timeMs - scaled);
     if (p.timeMs === 0) p.status = "dead";
   }
   if (sim.p1.status === "dead" || sim.p2.status === "dead") sim.status = "finished";
@@ -64,9 +86,10 @@ export function applyInput(sim: MatchSim, player: "p1" | "p2", side: Side): void
 
 function nextObstacle(sim: MatchSim, p: PlayerSim): Side | null {
   const r = nextFloat01(sim);
-  const value: Side | null = r < 0.1 ? null : r < 0.55 ? "left" : "right";
+  const none = Math.max(0, Math.min(1, sim.noneChance));
+  const value: Side | null = r < none ? null : r < none + (1 - none) * 0.5 ? "left" : "right";
 
-  if (value !== null && value === p.lastObstacleSide) {
+  if (sim.avoidSameSide && value !== null && value === p.lastObstacleSide) {
     const flip = nextFloat01(sim) < 0.5;
     const out = flip ? value : value === "left" ? "right" : "left";
     p.lastObstacleSide = out;

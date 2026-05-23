@@ -1,5 +1,4 @@
 import type { SinglePlayerRuntime } from "../state/singlePlayer";
-import { drawScore, drawTimeBar } from "./hud";
 
 export class Renderer {
   constructor(private canvas: HTMLCanvasElement) {}
@@ -22,15 +21,6 @@ export class Renderer {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = "#2b5a4b";
     ctx.fillRect(0, 0, w, h);
-
-    drawScore(ctx, rt.state.score, 16, 14);
-    drawTimeBar(ctx, {
-      x: 140,
-      y: 22,
-      width: w - 220,
-      height: 14,
-      ratio01: rt.state.timeMs / rt.state.config.maxTimeMs
-    });
 
     this.drawTreeAndPlayer(ctx, w, h, rt);
 
@@ -74,19 +64,11 @@ export class Renderer {
     ctx.fillStyle = "#2b5a4b";
     ctx.fillRect(0, 0, w, h);
 
-    ctx.save();
-    ctx.fillStyle = "#d7d2c3";
-    ctx.font = "14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
-    ctx.textBaseline = "middle";
-    ctx.fillText(`P1 ${String(state.p1.score).padStart(3, "0")}`, 16, 24);
-    ctx.fillText(`P2 ${String(state.p2.score).padStart(3, "0")}`, w - 90, 24);
-    ctx.restore();
-
-    const groundY = h - 40;
+    const m = this.treeMetrics(h);
     const leftX = w * 0.25;
     const rightX = w * 0.75;
-    this.drawOnlinePlayer(ctx, leftX, groundY, state.p1);
-    this.drawOnlinePlayer(ctx, rightX, groundY, state.p2);
+    this.drawOnlinePlayer(ctx, leftX, m, state.p1);
+    this.drawOnlinePlayer(ctx, rightX, m, state.p2);
 
     if (state.status === "lobby") {
       ctx.save();
@@ -108,53 +90,53 @@ export class Renderer {
     rt: SinglePlayerRuntime
   ): void {
     const centerX = w / 2;
-    const groundY = h - 40;
+    const m = this.treeMetrics(h);
 
     ctx.save();
     ctx.fillStyle = "#8a5a34";
-    ctx.fillRect(centerX - 26, groundY - 180, 52, 180);
+    ctx.fillRect(centerX - 26, m.trunkTop, 52, m.trunkHeight);
 
-    if (rt.nextObstacleSide) {
-      ctx.fillStyle = "#7a4a2b";
-      if (rt.nextObstacleSide === "left") ctx.fillRect(centerX - 150, groundY - 130, 124, 20);
-      if (rt.nextObstacleSide === "right") ctx.fillRect(centerX + 26, groundY - 130, 124, 20);
+    ctx.fillStyle = "#7a4a2b";
+    for (let i = 0; i < rt.upcomingObstacles.length; i += 1) {
+      const y = m.groundY - (i + 1) * m.segmentHeight;
+      if (y < m.trunkTop + 20) break;
+      const side = rt.upcomingObstacles[i];
+      if (!side) continue;
+      if (side === "left") ctx.fillRect(centerX - 150, y, 124, 20);
+      if (side === "right") ctx.fillRect(centerX + 26, y, 124, 20);
     }
 
     const px = rt.state.side === "left" ? centerX - 90 : centerX + 90;
     ctx.fillStyle = "#c9b07f";
-    ctx.fillRect(px - 18, groundY - 46, 36, 46);
+    ctx.fillRect(px - 18, m.groundY - 46, 36, 46);
     ctx.fillStyle = "#d7d2c3";
-    ctx.fillRect(px + (rt.state.side === "left" ? 18 : -26), groundY - 26, 24, 10);
+    ctx.fillRect(px + (rt.state.side === "left" ? 18 : -26), m.groundY - 26, 24, 10);
     ctx.restore();
   }
 
-  private drawSimpleTree(
-    ctx: CanvasRenderingContext2D,
-    centerX: number,
-    groundY: number
-  ): void {
+  private drawSimpleTree(ctx: CanvasRenderingContext2D, centerX: number, m: TreeMetrics): void {
     ctx.save();
     ctx.fillStyle = "#8a5a34";
-    ctx.fillRect(centerX - 26, groundY - 180, 52, 180);
+    ctx.fillRect(centerX - 26, m.trunkTop, 52, m.trunkHeight);
     ctx.restore();
   }
 
   private drawOnlinePlayer(
     ctx: CanvasRenderingContext2D,
     treeX: number,
-    groundY: number,
+    m: TreeMetrics,
     p: {
       status: "alive" | "dead";
       side: "left" | "right";
       obstacleSide: "left" | "right" | null;
     }
   ): void {
-    this.drawSimpleTree(ctx, treeX, groundY);
+    this.drawSimpleTree(ctx, treeX, m);
 
     if (p.obstacleSide) {
       ctx.save();
       ctx.fillStyle = "#7a4a2b";
-      const y = groundY - 130;
+      const y = m.groundY - m.segmentHeight;
       if (p.obstacleSide === "left") ctx.fillRect(treeX - 150, y, 124, 20);
       if (p.obstacleSide === "right") ctx.fillRect(treeX + 26, y, 124, 20);
       ctx.restore();
@@ -164,10 +146,18 @@ export class Renderer {
     const px = p.side === "left" ? treeX - 90 : treeX + 90;
     ctx.globalAlpha = p.status === "dead" ? 0.4 : 1;
     ctx.fillStyle = "#c9b07f";
-    ctx.fillRect(px - 18, groundY - 46, 36, 46);
+    ctx.fillRect(px - 18, m.groundY - 46, 36, 46);
     ctx.fillStyle = "#d7d2c3";
-    ctx.fillRect(px + (p.side === "left" ? 18 : -26), groundY - 26, 24, 10);
+    ctx.fillRect(px + (p.side === "left" ? 18 : -26), m.groundY - 26, 24, 10);
     ctx.restore();
+  }
+
+  private treeMetrics(h: number): TreeMetrics {
+    const groundY = h - 24;
+    const trunkTop = 56;
+    const trunkHeight = Math.max(160, groundY - trunkTop);
+    const segmentHeight = 64;
+    return { groundY, trunkTop, trunkHeight, segmentHeight };
   }
 
   private ctx(): CanvasRenderingContext2D {
@@ -176,3 +166,10 @@ export class Renderer {
     return ctx;
   }
 }
+
+type TreeMetrics = {
+  groundY: number;
+  trunkTop: number;
+  trunkHeight: number;
+  segmentHeight: number;
+};
