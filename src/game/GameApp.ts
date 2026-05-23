@@ -9,7 +9,7 @@ import { createOverlays, showHudOnline, showHudSingle, showLeaderboard, showMenu
 import { attachOverlayActions } from "./ui/actions";
 import { defaultGameConfig, type GameConfig } from "./config/gameConfig";
 import { loadGameConfig } from "./config/loadConfig";
-import { readLeaderboard, submitScore, type LeaderboardEntry } from "./score/leaderboard";
+import { readLeaderboard, submitScore, type Difficulty, type LeaderboardEntry } from "./score/leaderboard";
 
 export class GameApp {
   private overlays: Overlays;
@@ -26,12 +26,19 @@ export class GameApp {
   private flow: FlowState;
   private leaderboardEntries: LeaderboardEntry[] = [];
   private singleResult: { bestScore: number; isNewRecord: boolean } | null = null;
+  private difficulty: Difficulty = "normal";
+  private leaderboardDifficulty: Difficulty = "normal";
 
   constructor(private root: HTMLElement) {
     this.overlays = createOverlays(document);
     this.root.replaceChildren(this.overlays.root);
 
     this.renderer = new Renderer(this.overlays.canvas);
+
+    try {
+      const raw = localStorage.getItem("game.difficulty");
+      if (raw === "easy" || raw === "hard" || raw === "normal") this.difficulty = raw;
+    } catch {}
 
     this.flow = createInitialFlow({ url: window.location.href });
     if (this.flow.screen === "online") this.connectOnline();
@@ -52,7 +59,7 @@ export class GameApp {
           }
 
           if (this.flow.screen === "leaderboard") {
-            showLeaderboard(this.overlays, { entries: this.leaderboardEntries });
+            showLeaderboard(this.overlays, { difficulty: this.leaderboardDifficulty, entries: this.leaderboardEntries });
             return;
           }
 
@@ -60,9 +67,10 @@ export class GameApp {
             this.renderer.renderSingle(this.single);
             if (this.single.state.status === "dead") {
               if (!this.singleResult) {
-                const r = submitScore({ score: this.single.state.score });
+                const r = submitScore({ difficulty: this.difficulty, score: this.single.state.score });
                 this.singleResult = { bestScore: r.bestScore, isNewRecord: r.isNewRecord };
                 this.leaderboardEntries = r.entries;
+                this.leaderboardDifficulty = this.difficulty;
               }
               showResult(this.overlays, {
                 score: this.single.state.score,
@@ -137,7 +145,7 @@ export class GameApp {
         this.flow = reduceFlow(this.flow, { type: "menu.single" });
         const seed = (Math.random() * 1e9) | 0;
         loadGameConfig().then((cfg) => {
-          this.config = cfg;
+          this.config = applyDifficulty(cfg, this.difficulty);
           this.single = createSinglePlayerRuntime(seed, this.config);
           this.singleResult = null;
         });
@@ -149,13 +157,18 @@ export class GameApp {
       },
       onLeaderboard: () => {
         this.flow = reduceFlow(this.flow, { type: "nav.leaderboard" });
-        this.leaderboardEntries = readLeaderboard();
+        this.leaderboardDifficulty = this.difficulty;
+        this.leaderboardEntries = readLeaderboard(this.leaderboardDifficulty);
+      },
+      onLeaderboardDifficulty: (difficulty: Difficulty) => {
+        this.leaderboardDifficulty = difficulty;
+        this.leaderboardEntries = readLeaderboard(difficulty);
       },
       onRestart: () => {
         if (this.flow.screen === "single") {
           const seed = (Math.random() * 1e9) | 0;
           loadGameConfig().then((cfg) => {
-            this.config = cfg;
+            this.config = applyDifficulty(cfg, this.difficulty);
             this.single = createSinglePlayerRuntime(seed, this.config);
             this.singleResult = null;
           });
@@ -169,6 +182,16 @@ export class GameApp {
         this.online?.disconnect();
         this.flow = reduceFlow(this.flow, { type: "nav.menu" });
         this.singleResult = null;
+      },
+      onDifficulty: (difficulty) => {
+        this.difficulty = difficulty;
+        try {
+          localStorage.setItem("game.difficulty", difficulty);
+        } catch {}
+        if (this.flow.screen === "leaderboard") {
+          this.leaderboardDifficulty = difficulty;
+          this.leaderboardEntries = readLeaderboard(difficulty);
+        }
       },
       onChopSoundStyle: (style) => {
         this.audio.setChopStyle(style);
@@ -223,4 +246,9 @@ export class GameApp {
     this.online = new OnlineClient(this.flow.wsUrl, this.flow.roomId, this.flow.playerId);
     this.online.connect();
   }
+}
+
+function applyDifficulty(cfg: GameConfig, difficulty: Difficulty): GameConfig {
+  const decayScale = difficulty === "easy" ? 1.5 : difficulty === "hard" ? 2.5 : 2;
+  return { ...cfg, time: { ...cfg.time, decayScale } };
 }

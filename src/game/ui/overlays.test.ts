@@ -54,6 +54,7 @@ describe("ui overlays", () => {
   it("can show leaderboard overlay with top entries", () => {
     const overlays = createOverlays(document);
     showLeaderboard(overlays, {
+      difficulty: "normal",
       entries: [
         { score: 10, atMs: 1 },
         { score: 7, atMs: 2 }

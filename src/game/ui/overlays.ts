@@ -7,10 +7,14 @@ export type Overlays = {
   menuLeaderboardBtn: HTMLButtonElement;
   menuRoomInput: HTMLInputElement;
   menuPlayerSelect: HTMLSelectElement;
+  menuDifficultySelect: HTMLSelectElement;
   menuChopSoundSelect: HTMLSelectElement;
   menuChopSoundTestBtn: HTMLButtonElement;
   hud: HTMLDivElement;
   leaderboard: HTMLDivElement;
+  leaderboardEasyBtn: HTMLButtonElement;
+  leaderboardNormalBtn: HTMLButtonElement;
+  leaderboardHardBtn: HTMLButtonElement;
   leaderboardList: HTMLDivElement;
   leaderboardBackBtn: HTMLButtonElement;
   result: HTMLDivElement;
@@ -92,6 +96,34 @@ export function createOverlays(doc: Document): Overlays {
   leaderboardBtn.textContent = "排行榜";
   leaderboardBtn.dataset.action = "nav.leaderboard";
 
+  const difficultyRow = doc.createElement("div");
+  difficultyRow.className = "menu-row";
+  const difficultyLabel = doc.createElement("label");
+  difficultyLabel.className = "menu-label";
+  difficultyLabel.textContent = "难度";
+  const difficultySelect = doc.createElement("select");
+  difficultySelect.className = "menu-select";
+  const dEasy = doc.createElement("option");
+  dEasy.value = "easy";
+  dEasy.textContent = "容易";
+  const dNormal = doc.createElement("option");
+  dNormal.value = "normal";
+  dNormal.textContent = "正常";
+  const dHard = doc.createElement("option");
+  dHard.value = "hard";
+  dHard.textContent = "困难";
+  difficultySelect.append(dEasy, dNormal, dHard);
+  difficultySelect.value = "normal";
+  try {
+    const saved = localStorage.getItem("game.difficulty");
+    if (saved === "easy" || saved === "hard" || saved === "normal") difficultySelect.value = saved;
+  } catch {}
+  difficultyLabel.appendChild(difficultySelect);
+  const difficultyHint = doc.createElement("div");
+  difficultyHint.className = "menu-hint";
+  difficultyHint.textContent = "仅影响单人模式";
+  difficultyRow.append(difficultyLabel, difficultyHint);
+
   const soundRow = doc.createElement("div");
   soundRow.className = "menu-row";
   const soundLabel = doc.createElement("label");
@@ -128,7 +160,7 @@ export function createOverlays(doc: Document): Overlays {
   soundRow.append(soundLabel, soundTestBtn);
 
   onlineForm.append(roomLabel, playerLabel);
-  menu.append(title, singleBtn, onlineForm, onlineBtn, leaderboardBtn, soundRow);
+  menu.append(title, singleBtn, onlineForm, onlineBtn, leaderboardBtn, difficultyRow, soundRow);
 
   const hud = doc.createElement("div");
   hud.className = "overlay overlay-hud";
@@ -246,6 +278,24 @@ export function createOverlays(doc: Document): Overlays {
   const boardTitle = doc.createElement("div");
   boardTitle.className = "result-title";
   boardTitle.textContent = "排行榜";
+  const boardTabs = doc.createElement("div");
+  boardTabs.className = "leaderboard-tabs";
+  const easyBtn = doc.createElement("button");
+  easyBtn.type = "button";
+  easyBtn.className = "leaderboard-tab";
+  easyBtn.textContent = "容易";
+  easyBtn.dataset.action = "leaderboard.easy";
+  const normalBtn = doc.createElement("button");
+  normalBtn.type = "button";
+  normalBtn.className = "leaderboard-tab";
+  normalBtn.textContent = "正常";
+  normalBtn.dataset.action = "leaderboard.normal";
+  const hardBtn = doc.createElement("button");
+  hardBtn.type = "button";
+  hardBtn.className = "leaderboard-tab";
+  hardBtn.textContent = "困难";
+  hardBtn.dataset.action = "leaderboard.hard";
+  boardTabs.append(easyBtn, normalBtn, hardBtn);
   const boardList = doc.createElement("div");
   boardList.className = "leaderboard-list";
   const boardBack = doc.createElement("button");
@@ -253,7 +303,7 @@ export function createOverlays(doc: Document): Overlays {
   boardBack.className = "menu-btn";
   boardBack.textContent = "返回";
   boardBack.dataset.action = "nav.menu";
-  boardCard.append(boardTitle, boardList, boardBack);
+  boardCard.append(boardTitle, boardTabs, boardList, boardBack);
   leaderboard.appendChild(boardCard);
 
   root.append(canvas, menu, hud, leaderboard, result);
@@ -267,10 +317,14 @@ export function createOverlays(doc: Document): Overlays {
     menuLeaderboardBtn: leaderboardBtn,
     menuRoomInput: roomInput,
     menuPlayerSelect: playerSelect,
+    menuDifficultySelect: difficultySelect,
     menuChopSoundSelect: soundSelect,
     menuChopSoundTestBtn: soundTestBtn,
     hud,
     leaderboard,
+    leaderboardEasyBtn: easyBtn,
+    leaderboardNormalBtn: normalBtn,
+    leaderboardHardBtn: hardBtn,
     leaderboardList: boardList,
     leaderboardBackBtn: boardBack,
     result,
@@ -340,13 +394,22 @@ export function showHudOnline(
   overlays.onlineHud.style.opacity = params.p1.status === "dead" && params.p2.status === "dead" ? "0.8" : "1";
 }
 
-export function showLeaderboard(overlays: Overlays, params: { entries: Array<{ score: number; atMs: number }> }): void {
+export function showLeaderboard(
+  overlays: Overlays,
+  params: { difficulty: "easy" | "normal" | "hard"; entries: Array<{ score: number; atMs: number }> }
+): void {
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "none";
   overlays.result.style.display = "none";
   overlays.leaderboard.style.display = "flex";
 
   overlays.leaderboardList.replaceChildren();
+  overlays.leaderboardEasyBtn.classList.remove("is-active");
+  overlays.leaderboardNormalBtn.classList.remove("is-active");
+  overlays.leaderboardHardBtn.classList.remove("is-active");
+  if (params.difficulty === "easy") overlays.leaderboardEasyBtn.classList.add("is-active");
+  if (params.difficulty === "normal") overlays.leaderboardNormalBtn.classList.add("is-active");
+  if (params.difficulty === "hard") overlays.leaderboardHardBtn.classList.add("is-active");
   const entries = params.entries;
   if (entries.length === 0) {
     const empty = document.createElement("div");

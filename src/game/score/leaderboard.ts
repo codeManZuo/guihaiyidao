@@ -3,16 +3,23 @@ export type LeaderboardEntry = {
   atMs: number;
 };
 
+export type Difficulty = "easy" | "normal" | "hard";
+
 export type LeaderboardStorage = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
 };
 
-const KEY = "scores.leaderboard.v1";
+function keyForDifficulty(difficulty: Difficulty): string {
+  return `scores.leaderboard.v1.${difficulty}`;
+}
 
-export function readLeaderboard(storage: LeaderboardStorage = localStorage): LeaderboardEntry[] {
+export function readLeaderboard(
+  difficulty: Difficulty,
+  storage: LeaderboardStorage = localStorage
+): LeaderboardEntry[] {
   try {
-    const raw = storage.getItem(KEY);
+    const raw = storage.getItem(keyForDifficulty(difficulty));
     if (!raw) return [];
     const parsed = JSON.parse(raw) as unknown;
     const entries = (parsed as any)?.entries;
@@ -25,13 +32,14 @@ export function readLeaderboard(storage: LeaderboardStorage = localStorage): Lea
       if (score < 0) continue;
       out.push({ score, atMs });
     }
-    return normalize(out, 10);
+    return normalize(out, 5);
   } catch {
     return [];
   }
 }
 
 export function submitScore(params: {
+  difficulty: Difficulty;
   score: number;
   storage?: LeaderboardStorage;
   nowMs?: number;
@@ -44,21 +52,21 @@ export function submitScore(params: {
 } {
   const storage = params.storage ?? localStorage;
   const nowMs = params.nowMs ?? Date.now();
-  const limit = params.limit ?? 10;
+  const limit = params.limit ?? 5;
   const score = Number(params.score);
   if (!Number.isFinite(score) || score < 0) {
-    const entries = readLeaderboard(storage);
+    const entries = readLeaderboard(params.difficulty, storage);
     const bestScore = entries[0]?.score ?? 0;
     return { entries, previousBestScore: bestScore, bestScore, isNewRecord: false };
   }
 
-  const existing = readLeaderboard(storage);
+  const existing = readLeaderboard(params.difficulty, storage);
   const previousBestScore = existing[0]?.score ?? 0;
   const merged = normalize([...existing, { score, atMs: nowMs }], limit);
   const bestScore = merged[0]?.score ?? 0;
   const isNewRecord = score > previousBestScore;
   try {
-    storage.setItem(KEY, JSON.stringify({ v: 1, entries: merged }));
+    storage.setItem(keyForDifficulty(params.difficulty), JSON.stringify({ v: 1, entries: merged }));
   } catch {}
   return { entries: merged, previousBestScore, bestScore, isNewRecord };
 }
@@ -71,4 +79,3 @@ function normalize(entries: LeaderboardEntry[], limit: number): LeaderboardEntry
   const lim = Math.max(1, Math.min(100, Math.floor(limit)));
   return sorted.slice(0, lim);
 }
-

@@ -76,6 +76,19 @@ body {
   align-items: flex-end;
 }
 
+.menu-hint {
+  width: 110px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.15);
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 .menu-btn-sm {
   width: 110px;
   height: 38px;
@@ -195,6 +208,26 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.leaderboard-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.leaderboard-tab {
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #d7d2c3;
+  font-size: 14px;
+}
+
+.leaderboard-tab.is-active {
+  border-color: rgba(201, 176, 127, 0.8);
+  background: rgba(201, 176, 127, 0.18);
 }
 
 .leaderboard-row {
