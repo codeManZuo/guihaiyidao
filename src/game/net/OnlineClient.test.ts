@@ -43,12 +43,12 @@ describe("OnlineClient v2", () => {
     });
 
     (client as any).connect();
-    (client as any).createRoom();
+    (client as any).createRoom({ roomId: "1234", difficulty: "hard" });
     expect(ws.sent.length).toBe(0);
 
     ws.open();
     expect(ws.sent.length).toBe(1);
-    expect(JSON.parse(ws.sent[0])).toEqual({ v: 2, type: "create_room" });
+    expect(JSON.parse(ws.sent[0])).toEqual({ v: 2, type: "create_room", roomId: "1234", difficulty: "hard" });
 
     ws.message(JSON.stringify({ v: 2, type: "joined", roomId: "1234", playerId: "p1", isHost: true }));
     expect((client as any).getJoined()).toEqual({ roomId: "1234", playerId: "p1", isHost: true });

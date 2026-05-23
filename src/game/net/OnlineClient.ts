@@ -1,4 +1,4 @@
-import { decodeMessage, encodeMessage, type ErrorMessageV2, type JoinResultV2, type StateMessageV2, type WireMessage } from "./protocol";
+import { decodeMessage, encodeMessage, type CreateRoomV2, type Difficulty, type ErrorMessageV2, type JoinResultV2, type StateMessageV2, type WireMessage } from "./protocol";
 import type { Side } from "../state/types";
 
 type WebSocketLike = {
@@ -56,8 +56,14 @@ export class OnlineClient {
     this.pending = [];
   }
 
-  createRoom(): void {
-    this.sendOrQueue(encodeMessage({ v: 2, type: "create_room" }));
+  createRoom(params: { roomId?: string; difficulty: Difficulty }): void {
+    const msg: CreateRoomV2 = {
+      v: 2,
+      type: "create_room",
+      difficulty: params.difficulty,
+      ...(typeof params.roomId === "string" && params.roomId.length > 0 ? { roomId: params.roomId } : {})
+    };
+    this.sendOrQueue(encodeMessage(msg));
   }
 
   joinRoom(roomId: string): void {
