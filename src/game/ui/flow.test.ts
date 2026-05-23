@@ -25,4 +25,12 @@ describe("ui flow", () => {
     expect(s1.mode).toBe("lobby");
     if (s1.screen === "online") expect(s1.wsUrl).toBe("ws://localhost:8787");
   });
+
+  it("can open leaderboard from menu and return", () => {
+    const s0 = createInitialFlow({ url: "http://localhost:5173/" });
+    const s1 = reduceFlow(s0, { type: "nav.leaderboard" } as any);
+    expect(s1.screen).toBe("leaderboard");
+    const s2 = reduceFlow(s1 as any, { type: "nav.menu" });
+    expect(s2.screen).toBe("menu");
+  });
 });

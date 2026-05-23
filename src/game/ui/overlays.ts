@@ -4,11 +4,20 @@ export type Overlays = {
   menu: HTMLDivElement;
   menuSingleBtn: HTMLButtonElement;
   menuOnlineBtn: HTMLButtonElement;
+  menuLeaderboardBtn: HTMLButtonElement;
   menuRoomInput: HTMLInputElement;
   menuPlayerSelect: HTMLSelectElement;
+  menuChopSoundSelect: HTMLSelectElement;
+  menuChopSoundTestBtn: HTMLButtonElement;
   hud: HTMLDivElement;
+  leaderboard: HTMLDivElement;
+  leaderboardList: HTMLDivElement;
+  leaderboardBackBtn: HTMLButtonElement;
   result: HTMLDivElement;
   resultScore: HTMLSpanElement;
+  resultBestScore: HTMLSpanElement;
+  resultCongrats: HTMLDivElement;
+  resultConfetti: HTMLDivElement;
   resultRestartBtn: HTMLButtonElement;
   resultMenuBtn: HTMLButtonElement;
   singleHud: HTMLDivElement;
@@ -77,8 +86,49 @@ export function createOverlays(doc: Document): Overlays {
   onlineBtn.textContent = "在线双人";
   onlineBtn.dataset.action = "menu.online";
 
+  const leaderboardBtn = doc.createElement("button");
+  leaderboardBtn.type = "button";
+  leaderboardBtn.className = "menu-btn";
+  leaderboardBtn.textContent = "排行榜";
+  leaderboardBtn.dataset.action = "nav.leaderboard";
+
+  const soundRow = doc.createElement("div");
+  soundRow.className = "menu-row";
+  const soundLabel = doc.createElement("label");
+  soundLabel.className = "menu-label";
+  soundLabel.textContent = "砍树音效";
+  const soundSelect = doc.createElement("select");
+  soundSelect.className = "menu-select";
+  const oMix = doc.createElement("option");
+  oMix.value = "mix";
+  oMix.textContent = "混合（推荐）";
+  const oThud = doc.createElement("option");
+  oThud.value = "thud";
+  oThud.textContent = "咚！木头";
+  const oSwish = doc.createElement("option");
+  oSwish.value = "swish";
+  oSwish.textContent = "唰！挥砍";
+  const oClick = doc.createElement("option");
+  oClick.value = "click";
+  oClick.textContent = "啪嗒！清脆";
+  const oTung = doc.createElement("option");
+  oTung.value = "tungtung";
+  oTung.textContent = "通通声（mp3）";
+  soundSelect.append(oMix, oThud, oSwish, oClick, oTung);
+  try {
+    const saved = localStorage.getItem("audio.chopStyle");
+    if (saved) soundSelect.value = saved;
+  } catch {}
+  soundLabel.appendChild(soundSelect);
+  const soundTestBtn = doc.createElement("button");
+  soundTestBtn.type = "button";
+  soundTestBtn.className = "menu-btn menu-btn-sm";
+  soundTestBtn.textContent = "试听";
+  soundTestBtn.dataset.action = "menu.sound.test";
+  soundRow.append(soundLabel, soundTestBtn);
+
   onlineForm.append(roomLabel, playerLabel);
-  menu.append(title, singleBtn, onlineForm, onlineBtn);
+  menu.append(title, singleBtn, onlineForm, onlineBtn, leaderboardBtn, soundRow);
 
   const hud = doc.createElement("div");
   hud.className = "overlay overlay-hud";
@@ -150,12 +200,29 @@ export function createOverlays(doc: Document): Overlays {
   const resultTitle = doc.createElement("div");
   resultTitle.className = "result-title";
   resultTitle.textContent = "失败";
+
+  const resultCongrats = doc.createElement("div");
+  resultCongrats.className = "result-congrats";
+  resultCongrats.textContent = "恭喜！打破记录！";
+  resultCongrats.style.display = "none";
+
   const resultLine = doc.createElement("div");
   resultLine.className = "result-line";
-  resultLine.textContent = "分数 ";
+  resultLine.textContent = "本次分数 ";
   const resultScore = doc.createElement("span");
   resultScore.textContent = "0";
   resultLine.appendChild(resultScore);
+
+  const bestLine = doc.createElement("div");
+  bestLine.className = "result-line";
+  bestLine.textContent = "最好成绩 ";
+  const resultBestScore = doc.createElement("span");
+  resultBestScore.textContent = "0";
+  bestLine.appendChild(resultBestScore);
+
+  const confetti = doc.createElement("div");
+  confetti.className = "result-confetti";
+
   const resultActions = doc.createElement("div");
   resultActions.className = "result-actions";
   const restartBtn = doc.createElement("button");
@@ -169,10 +236,27 @@ export function createOverlays(doc: Document): Overlays {
   menuBtn.textContent = "返回菜单";
   menuBtn.dataset.action = "nav.menu";
   resultActions.append(restartBtn, menuBtn);
-  resultCard.append(resultTitle, resultLine, resultActions);
-  result.appendChild(resultCard);
+  resultCard.append(resultTitle, resultCongrats, resultLine, bestLine, resultActions);
+  result.append(confetti, resultCard);
 
-  root.append(canvas, menu, hud, result);
+  const leaderboard = doc.createElement("div");
+  leaderboard.className = "overlay overlay-leaderboard";
+  const boardCard = doc.createElement("div");
+  boardCard.className = "result-card";
+  const boardTitle = doc.createElement("div");
+  boardTitle.className = "result-title";
+  boardTitle.textContent = "排行榜";
+  const boardList = doc.createElement("div");
+  boardList.className = "leaderboard-list";
+  const boardBack = doc.createElement("button");
+  boardBack.type = "button";
+  boardBack.className = "menu-btn";
+  boardBack.textContent = "返回";
+  boardBack.dataset.action = "nav.menu";
+  boardCard.append(boardTitle, boardList, boardBack);
+  leaderboard.appendChild(boardCard);
+
+  root.append(canvas, menu, hud, leaderboard, result);
 
   const overlays: Overlays = {
     root,
@@ -180,11 +264,20 @@ export function createOverlays(doc: Document): Overlays {
     menu,
     menuSingleBtn: singleBtn,
     menuOnlineBtn: onlineBtn,
+    menuLeaderboardBtn: leaderboardBtn,
     menuRoomInput: roomInput,
     menuPlayerSelect: playerSelect,
+    menuChopSoundSelect: soundSelect,
+    menuChopSoundTestBtn: soundTestBtn,
     hud,
+    leaderboard,
+    leaderboardList: boardList,
+    leaderboardBackBtn: boardBack,
     result,
     resultScore,
+    resultBestScore,
+    resultCongrats,
+    resultConfetti: confetti,
     resultRestartBtn: restartBtn,
     resultMenuBtn: menuBtn,
     singleHud,
@@ -204,12 +297,14 @@ export function createOverlays(doc: Document): Overlays {
 export function showMenu(overlays: Overlays): void {
   overlays.menu.style.display = "flex";
   overlays.hud.style.display = "none";
+  overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
 }
 
 export function showHudSingle(overlays: Overlays, params: { score: number; timeRatio01: number }): void {
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "flex";
+  overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
   overlays.singleHud.style.display = "flex";
   overlays.onlineHud.style.display = "none";
@@ -228,6 +323,7 @@ export function showHudOnline(
 ): void {
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "flex";
+  overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
   overlays.singleHud.style.display = "none";
   overlays.onlineHud.style.display = "flex";
@@ -244,9 +340,90 @@ export function showHudOnline(
   overlays.onlineHud.style.opacity = params.p1.status === "dead" && params.p2.status === "dead" ? "0.8" : "1";
 }
 
-export function showResult(overlays: Overlays, params: { score: number }): void {
+export function showLeaderboard(overlays: Overlays, params: { entries: Array<{ score: number; atMs: number }> }): void {
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "none";
+  overlays.result.style.display = "none";
+  overlays.leaderboard.style.display = "flex";
+
+  overlays.leaderboardList.replaceChildren();
+  const entries = params.entries;
+  if (entries.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "leaderboard-empty";
+    empty.textContent = "暂无记录";
+    overlays.leaderboardList.appendChild(empty);
+    return;
+  }
+
+  for (let i = 0; i < entries.length; i += 1) {
+    const e = entries[i];
+    const row = document.createElement("div");
+    row.className = "leaderboard-row";
+    const left = document.createElement("div");
+    left.className = "leaderboard-rank";
+    left.textContent = String(i + 1);
+    const mid = document.createElement("div");
+    mid.className = "leaderboard-score";
+    mid.textContent = String(e.score);
+    const right = document.createElement("div");
+    right.className = "leaderboard-time";
+    right.textContent = formatShortTime(e.atMs);
+    row.append(left, mid, right);
+    overlays.leaderboardList.appendChild(row);
+  }
+}
+
+export function showResult(
+  overlays: Overlays,
+  params: { score: number; bestScore?: number; isNewRecord?: boolean }
+): void {
+  overlays.menu.style.display = "none";
+  overlays.hud.style.display = "none";
+  overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "flex";
   overlays.resultScore.textContent = String(params.score);
+
+  if (params.bestScore !== undefined) {
+    overlays.resultBestScore.textContent = String(params.bestScore);
+    (overlays.resultBestScore.parentElement as HTMLElement).style.display = "block";
+  } else {
+    (overlays.resultBestScore.parentElement as HTMLElement).style.display = "none";
+  }
+
+  const isNew = params.isNewRecord === true;
+  overlays.resultCongrats.style.display = isNew ? "block" : "none";
+  if (isNew) maybeConfetti(overlays, String(params.score));
+}
+
+function maybeConfetti(overlays: Overlays, key: string): void {
+  if ((overlays.resultConfetti as any).dataset?.for === key) return;
+  (overlays.resultConfetti as any).dataset.for = key;
+  overlays.resultConfetti.replaceChildren();
+  const colors = ["#f2d16b", "#e58a7a", "#77b8e5", "#86d07c", "#c79be5", "#f0f0f0"];
+  const n = 26;
+  for (let i = 0; i < n; i += 1) {
+    const d = document.createElement("div");
+    d.className = "confetti";
+    const left = Math.floor((i / n) * 100 + Math.random() * (100 / n));
+    const delay = Math.random() * 0.25;
+    const dur = 0.9 + Math.random() * 0.6;
+    const rot = Math.floor(Math.random() * 360);
+    d.setAttribute(
+      "style",
+      `left:${left}%;background:${colors[i % colors.length]};animation-delay:${delay}s;animation-duration:${dur}s;transform:rotate(${rot}deg)`
+    );
+    overlays.resultConfetti.appendChild(d);
+  }
+  setTimeout(() => {
+    overlays.resultConfetti.replaceChildren();
+  }, 1600);
+}
+
+function formatShortTime(atMs: number): string {
+  const d = new Date(atMs);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${hh}:${mm}:${ss}`;
 }

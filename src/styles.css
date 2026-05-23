@@ -66,6 +66,20 @@ body {
   gap: 10px;
 }
 
+.menu-row {
+  width: min(360px, 86vw);
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+
+.menu-btn-sm {
+  width: 110px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
 .menu-label {
   flex: 1;
   display: flex;
@@ -131,6 +145,14 @@ body {
   padding: 20px;
 }
 
+.overlay-leaderboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 20px;
+}
+
 .result-card {
   width: min(420px, 92vw);
   border-radius: 18px;
@@ -157,4 +179,76 @@ body {
   flex-direction: column;
   gap: 10px;
   align-items: center;
+}
+
+.result-congrats {
+  font-size: 16px;
+  color: #f2d16b;
+  letter-spacing: 1px;
+}
+
+.leaderboard-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 40px 1fr 84px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.leaderboard-rank {
+  opacity: 0.9;
+}
+
+.leaderboard-score {
+  font-size: 16px;
+}
+
+.leaderboard-time {
+  opacity: 0.85;
+  font-size: 12px;
+  text-align: right;
+}
+
+.leaderboard-empty {
+  opacity: 0.9;
+  padding: 10px 0;
+}
+
+.result-confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti {
+  position: absolute;
+  top: -10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  opacity: 0.95;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(520px) rotate(520deg);
+    opacity: 0;
+  }
 }

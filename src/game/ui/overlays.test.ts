@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createOverlays, showHudOnline, showHudSingle, showMenu, showResult } from "./overlays";
+import { createOverlays, showHudOnline, showHudSingle, showLeaderboard, showMenu, showResult } from "./overlays";
 
 describe("ui overlays", () => {
   it("shows menu by default", () => {
@@ -8,6 +8,7 @@ describe("ui overlays", () => {
     expect(overlays.hud.style.display).toBe("none");
     expect(overlays.menu.textContent).toContain("单人");
     expect(overlays.menu.textContent).toContain("在线双人");
+    expect(overlays.menu.textContent).toContain("排行榜");
   });
 
   it("can show single HUD with score and time bar ratio", () => {
@@ -43,9 +44,24 @@ describe("ui overlays", () => {
 
   it("shows result overlay with actions", () => {
     const overlays = createOverlays(document);
-    showResult(overlays, { score: 9 });
+    showResult(overlays, { score: 9, bestScore: 12, isNewRecord: false });
     expect(overlays.result.style.display).not.toBe("none");
     expect(overlays.result.textContent).toContain("9");
+    expect(overlays.result.textContent).toContain("12");
     expect(overlays.result.textContent).toContain("返回菜单");
+  });
+
+  it("can show leaderboard overlay with top entries", () => {
+    const overlays = createOverlays(document);
+    showLeaderboard(overlays, {
+      entries: [
+        { score: 10, atMs: 1 },
+        { score: 7, atMs: 2 }
+      ]
+    });
+    expect(overlays.leaderboard.style.display).not.toBe("none");
+    expect(overlays.leaderboard.textContent).toContain("10");
+    expect(overlays.leaderboard.textContent).toContain("7");
+    expect(overlays.leaderboard.textContent).toContain("返回");
   });
 });

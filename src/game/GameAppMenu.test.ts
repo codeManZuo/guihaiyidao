@@ -4,7 +4,27 @@ import { GameApp } from "./GameApp";
 describe("GameApp menu", () => {
   it("renders menu on boot when opening root url", () => {
     (HTMLCanvasElement.prototype as any).getContext = () => ({
-      setTransform: () => {}
+      setTransform: () => {},
+      clearRect: () => {},
+      fillRect: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      quadraticCurveTo: () => {},
+      closePath: () => {},
+      fill: () => {},
+      createLinearGradient: () => ({ addColorStop: () => {} }),
+      save: () => {},
+      restore: () => {},
+      translate: () => {},
+      rotate: () => {},
+      fillText: () => {},
+      set imageSmoothingEnabled(_: boolean) {},
+      set fillStyle(_: string) {},
+      set font(_: string) {},
+      set textAlign(_: CanvasTextAlign) {},
+      set textBaseline(_: CanvasTextBaseline) {},
+      set globalAlpha(_: number) {},
+      drawImage: () => {}
     });
     const root = document.createElement("div");
     new GameApp(root);

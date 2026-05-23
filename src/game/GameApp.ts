@@ -5,10 +5,11 @@ import { chopSinglePlayer, createSinglePlayerRuntime, tickSinglePlayer } from ".
 import { AudioBank } from "./audio/AudioBank";
 import { OnlineClient } from "./net/OnlineClient";
 import { createInitialFlow, reduceFlow, type FlowState } from "./ui/flow";
-import { createOverlays, showHudOnline, showHudSingle, showMenu, showResult, type Overlays } from "./ui/overlays";
+import { createOverlays, showHudOnline, showHudSingle, showLeaderboard, showMenu, showResult, type Overlays } from "./ui/overlays";
 import { attachOverlayActions } from "./ui/actions";
 import { defaultGameConfig, type GameConfig } from "./config/gameConfig";
 import { loadGameConfig } from "./config/loadConfig";
+import { readLeaderboard, submitScore, type LeaderboardEntry } from "./score/leaderboard";
 
 export class GameApp {
   private overlays: Overlays;
@@ -22,6 +23,8 @@ export class GameApp {
   private vibrationEnabled = true;
   private online: OnlineClient | null = null;
   private flow: FlowState;
+  private leaderboardEntries: LeaderboardEntry[] = [];
+  private singleResult: { bestScore: number; isNewRecord: boolean } | null = null;
 
   constructor(private root: HTMLElement) {
     this.overlays = createOverlays(document);
@@ -47,10 +50,24 @@ export class GameApp {
             return;
           }
 
+          if (this.flow.screen === "leaderboard") {
+            showLeaderboard(this.overlays, { entries: this.leaderboardEntries });
+            return;
+          }
+
           if (this.flow.screen === "single") {
             this.renderer.renderSingle(this.single);
             if (this.single.state.status === "dead") {
-              showResult(this.overlays, { score: this.single.state.score });
+              if (!this.singleResult) {
+                const r = submitScore({ score: this.single.state.score });
+                this.singleResult = { bestScore: r.bestScore, isNewRecord: r.isNewRecord };
+                this.leaderboardEntries = r.entries;
+              }
+              showResult(this.overlays, {
+                score: this.single.state.score,
+                bestScore: this.singleResult.bestScore,
+                isNewRecord: this.singleResult.isNewRecord
+              });
             } else {
               showHudSingle(this.overlays, {
                 score: this.single.state.score,
@@ -103,16 +120,30 @@ export class GameApp {
       onSingle: () => {
         this.online?.disconnect();
         this.flow = reduceFlow(this.flow, { type: "menu.single" });
-        this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0, this.config);
+        const seed = (Math.random() * 1e9) | 0;
+        loadGameConfig().then((cfg) => {
+          this.config = cfg;
+          this.single = createSinglePlayerRuntime(seed, this.config);
+          this.singleResult = null;
+        });
       },
       onOnline: ({ roomId, playerId }) => {
         const wsUrl = this.flow.screen === "online" ? this.flow.wsUrl : "ws://localhost:8787";
         this.flow = reduceFlow(this.flow, { type: "menu.online", roomId, playerId, wsUrl });
         this.connectOnline();
       },
+      onLeaderboard: () => {
+        this.flow = reduceFlow(this.flow, { type: "nav.leaderboard" });
+        this.leaderboardEntries = readLeaderboard();
+      },
       onRestart: () => {
         if (this.flow.screen === "single") {
-          this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0, this.config);
+          const seed = (Math.random() * 1e9) | 0;
+          loadGameConfig().then((cfg) => {
+            this.config = cfg;
+            this.single = createSinglePlayerRuntime(seed, this.config);
+            this.singleResult = null;
+          });
           return;
         }
         if (this.flow.screen === "online") {
@@ -122,11 +153,22 @@ export class GameApp {
       onMenu: () => {
         this.online?.disconnect();
         this.flow = reduceFlow(this.flow, { type: "nav.menu" });
+        this.singleResult = null;
+      },
+      onChopSoundStyle: (style) => {
+        this.audio.setChopStyle(style);
+        try {
+          localStorage.setItem("audio.chopStyle", style);
+        } catch {}
+      },
+      onChopSoundTest: () => {
+        this.audio.playChop();
       }
     });
 
     this.cleanupInput = attachTapHalvesInput(this.overlays.canvas, (side) => {
       if (this.flow.screen === "online") {
+        this.renderer.triggerOnlineChop(this.flow.playerId, side);
         this.online?.sendInput(side);
         this.audio.playChop();
         if (this.vibrationEnabled) navigator.vibrate?.(12);
@@ -136,6 +178,7 @@ export class GameApp {
 
       if (this.single.state.status === "dead") return;
 
+      this.renderer.triggerSingleChop(side);
       chopSinglePlayer(this.single, side);
       this.audio.playChop();
       if (this.vibrationEnabled) navigator.vibrate?.(12);
