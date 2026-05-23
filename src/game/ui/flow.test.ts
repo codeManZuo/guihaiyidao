@@ -16,14 +16,10 @@ describe("ui flow", () => {
   it("can enter online lobby from menu", () => {
     const s0 = createInitialFlow({ url: "http://localhost:5173/" });
     const s1 = reduceFlow(s0, {
-      type: "menu.online",
-      roomId: "ABCD",
-      playerId: "p1",
-      wsUrl: "ws://localhost:8787"
+      type: "menu.online"
     });
     expect(s1.screen).toBe("online");
-    expect(s1.mode).toBe("lobby");
-    if (s1.screen === "online") expect(s1.wsUrl).toBe("ws://localhost:8787");
+    if (s1.screen === "online") expect(s1.mode).toBe("lobby");
   });
 
   it("can open leaderboard from menu and return", () => {

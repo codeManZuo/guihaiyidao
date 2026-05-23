@@ -3,10 +3,10 @@ export type Overlays = {
   canvas: HTMLCanvasElement;
   menu: HTMLDivElement;
   menuSingleBtn: HTMLButtonElement;
-  menuOnlineBtn: HTMLButtonElement;
+  menuCreateRoomBtn: HTMLButtonElement;
+  menuJoinRoomBtn: HTMLButtonElement;
   menuLeaderboardBtn: HTMLButtonElement;
   menuRoomInput: HTMLInputElement;
-  menuPlayerSelect: HTMLSelectElement;
   menuDifficultySelect: HTMLSelectElement;
   menuChopSoundSelect: HTMLSelectElement;
   menuChopSoundTestBtn: HTMLButtonElement;
@@ -33,6 +33,12 @@ export type Overlays = {
   onlineP1TimeFill: HTMLDivElement;
   onlineP2Score: HTMLSpanElement;
   onlineP2TimeFill: HTMLDivElement;
+  onlineLobby: HTMLDivElement;
+  onlineLobbyMe: HTMLSpanElement;
+  onlineLobbyOther: HTMLSpanElement;
+  onlineLobbyError: HTMLDivElement;
+  onlineReadyBtn: HTMLButtonElement;
+  onlineStartBtn: HTMLButtonElement;
 };
 
 export function createOverlays(doc: Document): Overlays {
@@ -63,32 +69,23 @@ export function createOverlays(doc: Document): Overlays {
   roomLabel.textContent = "房间号";
   const roomInput = doc.createElement("input");
   roomInput.className = "menu-input";
-  roomInput.value = "ABCD";
-  roomInput.inputMode = "text";
-  roomInput.autocapitalize = "characters";
+  roomInput.value = "";
+  roomInput.inputMode = "numeric";
   roomInput.autocomplete = "off";
   roomInput.spellcheck = false;
   roomLabel.appendChild(roomInput);
 
-  const playerLabel = doc.createElement("label");
-  playerLabel.className = "menu-label";
-  playerLabel.textContent = "玩家";
-  const playerSelect = doc.createElement("select");
-  playerSelect.className = "menu-select";
-  const optP1 = doc.createElement("option");
-  optP1.value = "p1";
-  optP1.textContent = "P1";
-  const optP2 = doc.createElement("option");
-  optP2.value = "p2";
-  optP2.textContent = "P2";
-  playerSelect.append(optP1, optP2);
-  playerLabel.appendChild(playerSelect);
+  const createRoomBtn = doc.createElement("button");
+  createRoomBtn.type = "button";
+  createRoomBtn.className = "menu-btn";
+  createRoomBtn.textContent = "创建房间";
+  createRoomBtn.dataset.action = "menu.online.create";
 
-  const onlineBtn = doc.createElement("button");
-  onlineBtn.type = "button";
-  onlineBtn.className = "menu-btn";
-  onlineBtn.textContent = "在线双人";
-  onlineBtn.dataset.action = "menu.online";
+  const joinRoomBtn = doc.createElement("button");
+  joinRoomBtn.type = "button";
+  joinRoomBtn.className = "menu-btn";
+  joinRoomBtn.textContent = "加入房间";
+  joinRoomBtn.dataset.action = "menu.online.join";
 
   const leaderboardBtn = doc.createElement("button");
   leaderboardBtn.type = "button";
@@ -159,8 +156,8 @@ export function createOverlays(doc: Document): Overlays {
   soundTestBtn.dataset.action = "menu.sound.test";
   soundRow.append(soundLabel, soundTestBtn);
 
-  onlineForm.append(roomLabel, playerLabel);
-  menu.append(title, singleBtn, onlineForm, onlineBtn, leaderboardBtn, difficultyRow, soundRow);
+  onlineForm.append(roomLabel);
+  menu.append(title, singleBtn, onlineForm, createRoomBtn, joinRoomBtn, leaderboardBtn, difficultyRow, soundRow);
 
   const hud = doc.createElement("div");
   hud.className = "overlay overlay-hud";
@@ -221,7 +218,39 @@ export function createOverlays(doc: Document): Overlays {
   onlineP2TimeFill.setAttribute("style", "width: 100%");
   p2Bar.appendChild(onlineP2TimeFill);
 
-  onlineHud.append(roomLine, p1, p1Bar, p2, p2Bar);
+  const onlineLobby = doc.createElement("div");
+  onlineLobby.className = "hud-online-lobby";
+  const lobbyLine = doc.createElement("div");
+  lobbyLine.className = "hud-online-lobby-line";
+  lobbyLine.textContent = "你是 ";
+  const onlineLobbyMe = doc.createElement("span");
+  onlineLobbyMe.textContent = "--";
+  lobbyLine.appendChild(onlineLobbyMe);
+  const lobbyOther = doc.createElement("div");
+  lobbyOther.className = "hud-online-lobby-other";
+  lobbyOther.textContent = "对方：";
+  const onlineLobbyOther = doc.createElement("span");
+  onlineLobbyOther.textContent = "未加入";
+  lobbyOther.appendChild(onlineLobbyOther);
+  const onlineLobbyError = doc.createElement("div");
+  onlineLobbyError.className = "hud-online-error";
+  onlineLobbyError.style.display = "none";
+  const lobbyActions = doc.createElement("div");
+  lobbyActions.className = "hud-online-lobby-actions";
+  const onlineReadyBtn = doc.createElement("button");
+  onlineReadyBtn.type = "button";
+  onlineReadyBtn.className = "menu-btn menu-btn-sm";
+  onlineReadyBtn.textContent = "准备";
+  onlineReadyBtn.dataset.action = "online.ready";
+  const onlineStartBtn = doc.createElement("button");
+  onlineStartBtn.type = "button";
+  onlineStartBtn.className = "menu-btn menu-btn-sm";
+  onlineStartBtn.textContent = "开始";
+  onlineStartBtn.dataset.action = "online.start";
+  lobbyActions.append(onlineReadyBtn, onlineStartBtn);
+  onlineLobby.append(lobbyLine, lobbyOther, onlineLobbyError, lobbyActions);
+
+  onlineHud.append(roomLine, p1, p1Bar, p2, p2Bar, onlineLobby);
 
   hud.append(singleHud, onlineHud);
 
@@ -313,10 +342,10 @@ export function createOverlays(doc: Document): Overlays {
     canvas,
     menu,
     menuSingleBtn: singleBtn,
-    menuOnlineBtn: onlineBtn,
+    menuCreateRoomBtn: createRoomBtn,
+    menuJoinRoomBtn: joinRoomBtn,
     menuLeaderboardBtn: leaderboardBtn,
     menuRoomInput: roomInput,
-    menuPlayerSelect: playerSelect,
     menuDifficultySelect: difficultySelect,
     menuChopSoundSelect: soundSelect,
     menuChopSoundTestBtn: soundTestBtn,
@@ -342,7 +371,13 @@ export function createOverlays(doc: Document): Overlays {
     onlineP1Score,
     onlineP1TimeFill,
     onlineP2Score,
-    onlineP2TimeFill
+    onlineP2TimeFill,
+    onlineLobby,
+    onlineLobbyMe,
+    onlineLobbyOther,
+    onlineLobbyError,
+    onlineReadyBtn,
+    onlineStartBtn
   };
   showMenu(overlays);
   return overlays;
@@ -373,6 +408,15 @@ export function showHudOnline(
     roomId: string;
     p1: { score: number; timeRatio01: number; status: "alive" | "dead" };
     p2: { score: number; timeRatio01: number; status: "alive" | "dead" };
+    lobby?: {
+      meLabel: string;
+      otherLabel: string;
+      error?: string | null;
+      readyEnabled: boolean;
+      readyText: string;
+      startEnabled: boolean;
+      startText: string;
+    };
   }
 ): void {
   overlays.menu.style.display = "none";
@@ -392,6 +436,22 @@ export function showHudOnline(
   overlays.onlineP2TimeFill.setAttribute("style", `width: ${p2Pct}%`);
 
   overlays.onlineHud.style.opacity = params.p1.status === "dead" && params.p2.status === "dead" ? "0.8" : "1";
+
+  if (params.lobby) {
+    overlays.onlineLobby.style.display = "flex";
+    overlays.onlineLobbyMe.textContent = params.lobby.meLabel;
+    overlays.onlineLobbyOther.textContent = params.lobby.otherLabel;
+    const err = params.lobby.error ?? null;
+    overlays.onlineLobbyError.textContent = err ?? "";
+    overlays.onlineLobbyError.style.display = err ? "block" : "none";
+    overlays.onlineReadyBtn.disabled = !params.lobby.readyEnabled;
+    overlays.onlineReadyBtn.textContent = params.lobby.readyText;
+    overlays.onlineStartBtn.disabled = !params.lobby.startEnabled;
+    overlays.onlineStartBtn.textContent = params.lobby.startText;
+  } else {
+    overlays.onlineLobby.style.display = "none";
+    overlays.onlineLobbyError.style.display = "none";
+  }
 }
 
 export function showLeaderboard(

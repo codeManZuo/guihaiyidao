@@ -30,6 +30,7 @@ describe("GameApp menu", () => {
     new GameApp(root);
     expect(root.querySelector(".overlay-menu")).not.toBeNull();
     expect(root.textContent).toContain("单人");
-    expect(root.textContent).toContain("在线双人");
+    expect(root.textContent).toContain("创建房间");
+    expect(root.textContent).toContain("加入房间");
   });
 });

@@ -7,7 +7,8 @@ describe("ui overlays", () => {
     expect(overlays.menu.style.display).not.toBe("none");
     expect(overlays.hud.style.display).toBe("none");
     expect(overlays.menu.textContent).toContain("单人");
-    expect(overlays.menu.textContent).toContain("在线双人");
+    expect(overlays.menu.textContent).toContain("创建房间");
+    expect(overlays.menu.textContent).toContain("加入房间");
     expect(overlays.menu.textContent).toContain("排行榜");
   });
 
