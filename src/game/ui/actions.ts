@@ -1,4 +1,3 @@
-import type { PlayerId } from "./flow";
 import type { Overlays } from "./overlays";
 import type { ChopSoundStyle } from "../audio/AudioBank";
 import type { Difficulty } from "../score/leaderboard";
@@ -7,7 +6,10 @@ export function attachOverlayActions(
   overlays: Overlays,
   handlers: {
     onSingle: () => void;
-    onOnline: (params: { roomId: string; playerId: PlayerId }) => void;
+    onCreateRoom: () => void;
+    onJoinRoom: (roomId: string) => void;
+    onOnlineReady?: () => void;
+    onOnlineStart?: () => void;
     onRestart: () => void;
     onMenu: () => void;
     onLeaderboard?: () => void;
@@ -19,15 +21,14 @@ export function attachOverlayActions(
 ): () => void {
   const onSingle = () => handlers.onSingle();
 
-  const onOnline = () => {
-    const roomId = overlays.menuRoomInput.value.trim() || "ABCD";
-    const playerId = (overlays.menuPlayerSelect.value === "p2" ? "p2" : "p1") as PlayerId;
-    handlers.onOnline({ roomId, playerId });
-  };
+  const onCreateRoom = () => handlers.onCreateRoom();
+  const onJoinRoom = () => handlers.onJoinRoom(overlays.menuRoomInput.value.trim());
 
   const onRestart = () => handlers.onRestart();
   const onMenu = () => handlers.onMenu();
   const onLeaderboard = () => handlers.onLeaderboard?.();
+  const onOnlineReady = () => handlers.onOnlineReady?.();
+  const onOnlineStart = () => handlers.onOnlineStart?.();
 
   const onLeaderboardDifficulty = (difficulty: Difficulty) => handlers.onLeaderboardDifficulty?.(difficulty);
   const onLeaderboardEasy = () => onLeaderboardDifficulty("easy");
@@ -49,8 +50,11 @@ export function attachOverlayActions(
   const onChopSoundTest = () => handlers.onChopSoundTest?.();
 
   overlays.menuSingleBtn.addEventListener("click", onSingle);
-  overlays.menuOnlineBtn.addEventListener("click", onOnline);
+  overlays.menuCreateRoomBtn.addEventListener("click", onCreateRoom);
+  overlays.menuJoinRoomBtn.addEventListener("click", onJoinRoom);
   overlays.menuLeaderboardBtn.addEventListener("click", onLeaderboard);
+  overlays.onlineReadyBtn.addEventListener("click", onOnlineReady);
+  overlays.onlineStartBtn.addEventListener("click", onOnlineStart);
   overlays.resultRestartBtn.addEventListener("click", onRestart);
   overlays.resultMenuBtn.addEventListener("click", onMenu);
   overlays.leaderboardBackBtn.addEventListener("click", onMenu);
@@ -65,8 +69,11 @@ export function attachOverlayActions(
 
   return () => {
     overlays.menuSingleBtn.removeEventListener("click", onSingle);
-    overlays.menuOnlineBtn.removeEventListener("click", onOnline);
+    overlays.menuCreateRoomBtn.removeEventListener("click", onCreateRoom);
+    overlays.menuJoinRoomBtn.removeEventListener("click", onJoinRoom);
     overlays.menuLeaderboardBtn.removeEventListener("click", onLeaderboard);
+    overlays.onlineReadyBtn.removeEventListener("click", onOnlineReady);
+    overlays.onlineStartBtn.removeEventListener("click", onOnlineStart);
     overlays.resultRestartBtn.removeEventListener("click", onRestart);
     overlays.resultMenuBtn.removeEventListener("click", onMenu);
     overlays.leaderboardBackBtn.removeEventListener("click", onMenu);

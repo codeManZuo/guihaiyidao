@@ -9,7 +9,8 @@ describe("overlay actions", () => {
 
     const cleanup = attachOverlayActions(overlays, {
       onSingle: () => {},
-      onOnline: () => {},
+      onCreateRoom: () => {},
+      onJoinRoom: () => {},
       onRestart: () => {},
       onMenu
     });

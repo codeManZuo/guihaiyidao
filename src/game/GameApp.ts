@@ -41,7 +41,6 @@ export class GameApp {
     } catch {}
 
     this.flow = createInitialFlow({ url: window.location.href });
-    if (this.flow.screen === "online") this.connectOnline();
 
     loadGameConfig().then((cfg) => {
       this.config = cfg;
@@ -88,20 +87,55 @@ export class GameApp {
 
           if (this.flow.screen === "online") {
             const s = this.online?.getState();
-            if (s?.type === "state") {
+            if (s) {
               this.renderer.renderOnline(s);
               const max = this.config.time.maxMs || 1;
               const p1Ratio = s.p1.timeMs <= 0 ? 0 : s.p1.timeMs / max;
               const p2Ratio = s.p2.timeMs <= 0 ? 0 : s.p2.timeMs / max;
+              const joined = this.online?.getJoined();
+              const me = joined?.playerId ?? null;
+              const isHost = joined?.isHost === true;
+              const meReady = me === "p1" ? s.p1.ready : me === "p2" ? s.p2.ready : false;
+              const other = me === "p1" ? s.p2 : me === "p2" ? s.p1 : null;
+              const otherLabel = !other
+                ? "未加入"
+                : !other.present
+                  ? "未加入"
+                  : !other.online
+                    ? "离线"
+                    : other.ready
+                      ? "已准备"
+                      : "未准备";
+              const error = this.online?.getError()?.message ?? null;
+              const canStart =
+                s.status === "lobby" &&
+                isHost &&
+                s.p1.present &&
+                s.p2.present &&
+                s.p1.online &&
+                s.p2.online &&
+                s.p1.ready &&
+                s.p2.ready;
+              const canReady = s.status === "lobby" && !!me && !meReady;
               showHudOnline(this.overlays, {
-                roomId: this.flow.roomId,
+                roomId: s.roomId,
                 p1: { score: s.p1.score, timeRatio01: p1Ratio, status: s.p1.status },
-                p2: { score: s.p2.score, timeRatio01: p2Ratio, status: s.p2.status }
+                p2: { score: s.p2.score, timeRatio01: p2Ratio, status: s.p2.status },
+                lobby: {
+                  meLabel: me ? `${me.toUpperCase()}${isHost ? "（房主）" : ""}${meReady ? " 已准备" : ""}` : "--",
+                  otherLabel,
+                  error,
+                  readyEnabled: canReady,
+                  readyText: meReady ? "已准备" : "准备",
+                  startEnabled: canStart,
+                  startText: isHost ? "开始" : "等待"
+                }
               });
 
               if (s.status === "finished") {
-                const score = this.flow.playerId === "p2" ? s.p2.score : s.p1.score;
-                showResult(this.overlays, { score });
+                const score = me === "p2" ? s.p2.score : s.p1.score;
+                const title = s.winner === "draw" ? "平局" : me && s.winner === me ? "胜利" : "失败";
+                showResult(this.overlays, { score, title, subtitle: `P1 ${s.p1.score} vs P2 ${s.p2.score}` });
               }
             } else {
               this.renderer.renderOnline({
@@ -109,10 +143,20 @@ export class GameApp {
                 p1: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null },
                 p2: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null }
               });
+              const roomId = this.online?.getJoined()?.roomId ?? "";
               showHudOnline(this.overlays, {
-                roomId: this.flow.roomId,
+                roomId,
                 p1: { score: 0, timeRatio01: 1, status: "alive" },
-                p2: { score: 0, timeRatio01: 1, status: "alive" }
+                p2: { score: 0, timeRatio01: 1, status: "alive" },
+                lobby: {
+                  meLabel: "--",
+                  otherLabel: "未加入",
+                  error: this.online?.getError()?.message ?? null,
+                  readyEnabled: false,
+                  readyText: "准备",
+                  startEnabled: false,
+                  startText: "开始"
+                }
               });
             }
           }
@@ -150,10 +194,21 @@ export class GameApp {
           this.singleResult = null;
         });
       },
-      onOnline: ({ roomId, playerId }) => {
-        const wsUrl = this.flow.screen === "online" ? this.flow.wsUrl : "ws://localhost:8787";
-        this.flow = reduceFlow(this.flow, { type: "menu.online", roomId, playerId, wsUrl });
+      onCreateRoom: () => {
+        this.flow = reduceFlow(this.flow, { type: "menu.online" });
         this.connectOnline();
+        this.online?.createRoom();
+      },
+      onJoinRoom: (roomId) => {
+        this.flow = reduceFlow(this.flow, { type: "menu.online" });
+        this.connectOnline();
+        this.online?.joinRoom(roomId);
+      },
+      onOnlineReady: () => {
+        this.online?.setReady();
+      },
+      onOnlineStart: () => {
+        this.online?.start();
       },
       onLeaderboard: () => {
         this.flow = reduceFlow(this.flow, { type: "nav.leaderboard" });
@@ -174,9 +229,7 @@ export class GameApp {
           });
           return;
         }
-        if (this.flow.screen === "online") {
-          this.connectOnline();
-        }
+        if (this.flow.screen === "online") this.flow = reduceFlow(this.flow, { type: "nav.menu" });
       },
       onMenu: () => {
         this.online?.disconnect();
@@ -206,7 +259,10 @@ export class GameApp {
 
     this.cleanupInput = attachTapHalvesInput(this.overlays.canvas, (side) => {
       if (this.flow.screen === "online") {
-        this.renderer.triggerOnlineChop(this.flow.playerId, side);
+        const state = this.online?.getState();
+        if (state?.status !== "playing") return;
+        const me = this.online?.getJoined()?.playerId;
+        if (me) this.renderer.triggerOnlineChop(me, side);
         this.online?.sendInput(side);
         this.audio.playChop();
         if (this.vibrationEnabled) navigator.vibrate?.(12);
@@ -243,8 +299,13 @@ export class GameApp {
   private connectOnline(): void {
     if (this.flow.screen !== "online") return;
     this.online?.disconnect();
-    this.online = new OnlineClient(this.flow.wsUrl, this.flow.roomId, this.flow.playerId);
+    this.online = new OnlineClient({ url: this.wsUrl() });
     this.online.connect();
+  }
+
+  private wsUrl(): string {
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${window.location.host}/ws`;
   }
 }
 

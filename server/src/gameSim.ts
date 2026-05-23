@@ -65,7 +65,7 @@ export function tick(sim: MatchSim, dtMs: number): void {
     p.timeMs = Math.max(0, p.timeMs - scaled);
     if (p.timeMs === 0) p.status = "dead";
   }
-  if (sim.p1.status === "dead" || sim.p2.status === "dead") sim.status = "finished";
+  if (sim.p1.status === "dead" && sim.p2.status === "dead") sim.status = "finished";
 }
 
 export function applyInput(sim: MatchSim, player: "p1" | "p2", side: Side): void {
@@ -76,12 +76,18 @@ export function applyInput(sim: MatchSim, player: "p1" | "p2", side: Side): void
   const isDead = p.obstacleSide !== null && p.obstacleSide === side;
   if (isDead) {
     p.status = "dead";
-    sim.status = "finished";
+    if (sim.p1.status === "dead" && sim.p2.status === "dead") sim.status = "finished";
     return;
   }
   p.score += 1;
   p.timeMs = Math.min(sim.maxTimeMs, p.timeMs + sim.addTimePerChopMs);
   p.obstacleSide = nextObstacle(sim, p);
+}
+
+export function computeWinner(sim: MatchSim): "p1" | "p2" | "draw" | null {
+  if (sim.status !== "finished") return null;
+  if (sim.p1.score === sim.p2.score) return "draw";
+  return sim.p1.score > sim.p2.score ? "p1" : "p2";
 }
 
 function nextObstacle(sim: MatchSim, p: PlayerSim): Side | null {
