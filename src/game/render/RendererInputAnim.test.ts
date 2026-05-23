@@ -8,4 +8,50 @@ describe("Renderer input-triggered chop animation", () => {
     r.triggerSingleChop("left");
     expect((r as any).singleSwingMs).toBeGreaterThan(0);
   });
+
+  it("renders online upcoming branches when obstacleSide is null", () => {
+    const canvas = document.createElement("canvas");
+    const originalGetContext = HTMLCanvasElement.prototype.getContext;
+    const ctx = new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          if (prop === "measureText") return () => ({ width: 0 });
+          if (prop === "createLinearGradient" || prop === "createRadialGradient") return () => ({ addColorStop: () => {} });
+          return () => {};
+        },
+        set: () => true
+      }
+    ) as any;
+    HTMLCanvasElement.prototype.getContext = () => ctx;
+    Object.defineProperty(canvas, "clientWidth", { value: 360 });
+    Object.defineProperty(canvas, "clientHeight", { value: 640 });
+    const r = new Renderer(canvas);
+    const drawBranch = vi.spyOn(r as any, "drawBranch");
+
+    r.renderOnline({
+      status: "playing",
+      p1: {
+        score: 0,
+        timeMs: 7000,
+        status: "alive",
+        side: "left",
+        obstacleSide: null,
+        upcomingObstacles: ["left"],
+        upcomingObstacleStyles: [1]
+      },
+      p2: {
+        score: 0,
+        timeMs: 7000,
+        status: "alive",
+        side: "left",
+        obstacleSide: null,
+        upcomingObstacles: [null],
+        upcomingObstacleStyles: [0]
+      }
+    });
+
+    expect(drawBranch).toHaveBeenCalled();
+    HTMLCanvasElement.prototype.getContext = originalGetContext;
+  });
 });

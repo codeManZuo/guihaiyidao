@@ -120,6 +120,8 @@ export class Renderer {
       status: "alive" | "dead";
       side: "left" | "right";
       obstacleSide: "left" | "right" | null;
+      upcomingObstacles?: Array<"left" | "right" | null>;
+      upcomingObstacleStyles?: number[];
     };
     p2: {
       score: number;
@@ -127,6 +129,8 @@ export class Renderer {
       status: "alive" | "dead";
       side: "left" | "right";
       obstacleSide: "left" | "right" | null;
+      upcomingObstacles?: Array<"left" | "right" | null>;
+      upcomingObstacleStyles?: number[];
     };
   }): void {
     const w = this.canvas.clientWidth;
@@ -228,11 +232,24 @@ export class Renderer {
       status: "alive" | "dead";
       side: "left" | "right";
       obstacleSide: "left" | "right" | null;
+      upcomingObstacles?: Array<"left" | "right" | null>;
+      upcomingObstacleStyles?: number[];
     }
   ): void {
     this.drawSimpleTree(ctx, treeX, m);
 
-    if (p.obstacleSide) {
+    const upcoming = p.upcomingObstacles;
+    const styles = p.upcomingObstacleStyles;
+    if (Array.isArray(upcoming) && upcoming.length > 0 && Array.isArray(styles) && styles.length > 0) {
+      for (let i = 0; i < upcoming.length; i += 1) {
+        const y = m.groundY - (i + 1) * m.segmentHeight;
+        if (y < m.trunkTop + 20) break;
+        const side = upcoming[i];
+        if (!side) continue;
+        const styleId = styles[i] ?? 0;
+        this.drawBranch(ctx, treeX, y, side, styleId);
+      }
+    } else if (p.obstacleSide) {
       const y = m.groundY - m.segmentHeight;
       const styleId = (hash32(Math.floor(treeX) * 7 + 11) >>> 0) % 4;
       this.drawBranch(ctx, treeX, y, p.obstacleSide, styleId);
