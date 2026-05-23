@@ -7,9 +7,11 @@ describe("singlePlayer runtime", () => {
     const rt = createSinglePlayerRuntime(123, defaultGameConfig());
     const first = rt.upcomingObstacles[0];
     const len = rt.upcomingObstacles.length;
+    const secondStyle = rt.upcomingObstacleStyles[1];
 
     chopSinglePlayer(rt, "left");
     expect(rt.upcomingObstacles.length).toBe(len);
     expect(rt.upcomingObstacles[0]).not.toBe(first);
+    expect(rt.upcomingObstacleStyles[0]).toBe(secondStyle);
   });
 });

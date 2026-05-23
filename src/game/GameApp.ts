@@ -17,6 +17,7 @@ export class GameApp {
   private loop: FixedTimestepLoop;
   private cleanupInput: (() => void) | null = null;
   private cleanupOverlays: (() => void) | null = null;
+  private cleanupResize: (() => void) | null = null;
   private config: GameConfig = defaultGameConfig();
   private single = createSinglePlayerRuntime(42, this.config);
   private audio = new AudioBank();
@@ -112,9 +113,23 @@ export class GameApp {
       1000 / 60
     );
 
-    const resize = () => this.renderer.resize(this.root.clientWidth, this.root.clientHeight);
+    const resize = () => {
+      const w = this.overlays.root.clientWidth || this.root.clientWidth;
+      const h = this.overlays.root.clientHeight || this.root.clientHeight;
+      this.renderer.resize(w, h);
+    };
     resize();
     window.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("resize", resize);
+    window.visualViewport?.addEventListener("scroll", resize);
+    const ro = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
+    ro?.observe(this.overlays.root);
+    this.cleanupResize = () => {
+      window.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("resize", resize);
+      window.visualViewport?.removeEventListener("scroll", resize);
+      ro?.disconnect();
+    };
 
     this.cleanupOverlays = attachOverlayActions(this.overlays, {
       onSingle: () => {
@@ -198,6 +213,7 @@ export class GameApp {
     this.loop.stop();
     this.cleanupInput?.();
     this.cleanupOverlays?.();
+    this.cleanupResize?.();
     this.online?.disconnect();
   }
 

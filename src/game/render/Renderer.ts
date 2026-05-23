@@ -55,8 +55,6 @@ export class Renderer {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     this.canvas.width = Math.floor(w * dpr);
     this.canvas.height = Math.floor(h * dpr);
-    this.canvas.style.width = `${w}px`;
-    this.canvas.style.height = `${h}px`;
     const ctx = this.screenCtx();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
@@ -202,7 +200,7 @@ export class Renderer {
       if (y < m.trunkTop + 20) break;
       const side = rt.upcomingObstacles[i];
       if (!side) continue;
-      const styleId = (hash32(i * 92821 + 7) >>> 0) % 4;
+      const styleId = rt.upcomingObstacleStyles[i] ?? 0;
       this.drawBranch(ctx, centerX, y, side, styleId);
     }
 
