@@ -219,7 +219,7 @@ export function createOverlays(doc: Document): Overlays {
 
   const p1 = doc.createElement("div");
   p1.className = "hud-player hud-player-p1";
-  p1.textContent = "P1 ";
+  p1.textContent = "对方 ";
   const onlineP1Score = doc.createElement("span");
   onlineP1Score.textContent = "0";
   p1.appendChild(onlineP1Score);
@@ -232,7 +232,7 @@ export function createOverlays(doc: Document): Overlays {
 
   const p2 = doc.createElement("div");
   p2.className = "hud-player hud-player-p2";
-  p2.textContent = "P2 ";
+  p2.textContent = "我 ";
   const onlineP2Score = doc.createElement("span");
   onlineP2Score.textContent = "0";
   p2.appendChild(onlineP2Score);
@@ -438,8 +438,8 @@ export function showHudOnline(
   overlays: Overlays,
   params: {
     roomId: string;
-    p1: { score: number; timeRatio01: number; status: "alive" | "dead" };
-    p2: { score: number; timeRatio01: number; status: "alive" | "dead" };
+    left: { score: number; timeRatio01: number; status: "alive" | "dead" };
+    right: { score: number; timeRatio01: number; status: "alive" | "dead" };
     lobby?: {
       meLabel: string;
       otherLabel: string;
@@ -459,15 +459,15 @@ export function showHudOnline(
   overlays.onlineHud.style.display = "flex";
 
   overlays.onlineRoom.textContent = params.roomId;
-  overlays.onlineP1Score.textContent = String(params.p1.score);
-  overlays.onlineP2Score.textContent = String(params.p2.score);
+  overlays.onlineP1Score.textContent = String(params.left.score);
+  overlays.onlineP2Score.textContent = String(params.right.score);
 
-  const p1Pct = Math.round(Math.max(0, Math.min(1, params.p1.timeRatio01)) * 100);
-  const p2Pct = Math.round(Math.max(0, Math.min(1, params.p2.timeRatio01)) * 100);
+  const p1Pct = Math.round(Math.max(0, Math.min(1, params.left.timeRatio01)) * 100);
+  const p2Pct = Math.round(Math.max(0, Math.min(1, params.right.timeRatio01)) * 100);
   overlays.onlineP1TimeFill.setAttribute("style", `width: ${p1Pct}%`);
   overlays.onlineP2TimeFill.setAttribute("style", `width: ${p2Pct}%`);
 
-  overlays.onlineHud.style.opacity = params.p1.status === "dead" && params.p2.status === "dead" ? "0.8" : "1";
+  overlays.onlineHud.style.opacity = params.left.status === "dead" && params.right.status === "dead" ? "0.8" : "1";
 
   if (params.lobby) {
     overlays.onlineLobby.style.display = "flex";

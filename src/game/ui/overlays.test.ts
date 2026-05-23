@@ -32,15 +32,15 @@ describe("ui overlays", () => {
     expect(overlays.hud.style.display).toBe("none");
   });
 
-  it("can show online HUD with P1/P2", () => {
+  it("can show online HUD with left/right labels", () => {
     const overlays = createOverlays(document);
     showHudOnline(overlays, {
       roomId: "ABCD",
-      p1: { score: 3, timeRatio01: 0.8, status: "alive" },
-      p2: { score: 7, timeRatio01: 0.4, status: "dead" }
+      left: { score: 3, timeRatio01: 0.8, status: "alive" },
+      right: { score: 7, timeRatio01: 0.4, status: "dead" }
     });
-    expect(overlays.hud.textContent).toContain("P1");
-    expect(overlays.hud.textContent).toContain("P2");
+    expect(overlays.hud.textContent).toContain("对方");
+    expect(overlays.hud.textContent).toContain("我");
     expect(overlays.hud.textContent).toContain("ABCD");
   });
 

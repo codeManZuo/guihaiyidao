@@ -88,24 +88,19 @@ export class GameApp {
           if (this.flow.screen === "online") {
             const s = this.online?.getState();
             if (s) {
-              this.renderer.renderOnline(s);
-              const max = this.config.time.maxMs || 1;
-              const p1Ratio = s.p1.timeMs <= 0 ? 0 : s.p1.timeMs / max;
-              const p2Ratio = s.p2.timeMs <= 0 ? 0 : s.p2.timeMs / max;
               const joined = this.online?.getJoined();
               const me = joined?.playerId ?? null;
+              const left = me === "p1" ? s.p2 : s.p1;
+              const right = me === "p1" ? s.p1 : s.p2;
+              this.renderer.renderOnline({ status: s.status, p1: left, p2: right });
+              const max = this.config.time.maxMs || 1;
+              const leftRatio = left.timeMs <= 0 ? 0 : left.timeMs / max;
+              const rightRatio = right.timeMs <= 0 ? 0 : right.timeMs / max;
               const isHost = joined?.isHost === true;
               const meReady = me === "p1" ? s.p1.ready : me === "p2" ? s.p2.ready : false;
               const other = me === "p1" ? s.p2 : me === "p2" ? s.p1 : null;
-              const otherLabel = !other
-                ? "未加入"
-                : !other.present
-                  ? "未加入"
-                  : !other.online
-                    ? "离线"
-                    : other.ready
-                      ? "已准备"
-                      : "未准备";
+              const otherStatus = !other ? "未加入" : !other.present ? "未加入" : !other.online ? "离线" : other.ready ? "已准备" : "未准备";
+              const otherLabel = `对方 ${otherStatus}`;
               const error = this.online?.getError()?.message ?? null;
               const canStart =
                 s.status === "lobby" &&
@@ -119,10 +114,10 @@ export class GameApp {
               const canReady = s.status === "lobby" && !!me && !meReady;
               showHudOnline(this.overlays, {
                 roomId: s.roomId,
-                p1: { score: s.p1.score, timeRatio01: p1Ratio, status: s.p1.status },
-                p2: { score: s.p2.score, timeRatio01: p2Ratio, status: s.p2.status },
+                left: { score: left.score, timeRatio01: leftRatio, status: left.status },
+                right: { score: right.score, timeRatio01: rightRatio, status: right.status },
                 lobby: {
-                  meLabel: me ? `${me.toUpperCase()}${isHost ? "（房主）" : ""}${meReady ? " 已准备" : ""}` : "--",
+                  meLabel: me ? `我${isHost ? "（房主）" : ""}${meReady ? " 已准备" : ""}` : "--",
                   otherLabel,
                   error,
                   readyEnabled: canReady,
@@ -133,9 +128,9 @@ export class GameApp {
               });
 
               if (s.status === "finished") {
-                const score = me === "p2" ? s.p2.score : s.p1.score;
+                const score = me === "p1" ? s.p1.score : me === "p2" ? s.p2.score : 0;
                 const title = s.winner === "draw" ? "平局" : me && s.winner === me ? "胜利" : "失败";
-                showResult(this.overlays, { score, title, subtitle: `P1 ${s.p1.score} vs P2 ${s.p2.score}` });
+                showResult(this.overlays, { score, title, subtitle: `左 ${left.score} vs 右 ${right.score}` });
               }
             } else {
               this.renderer.renderOnline({
@@ -146,11 +141,11 @@ export class GameApp {
               const roomId = this.online?.getJoined()?.roomId ?? "";
               showHudOnline(this.overlays, {
                 roomId,
-                p1: { score: 0, timeRatio01: 1, status: "alive" },
-                p2: { score: 0, timeRatio01: 1, status: "alive" },
+                left: { score: 0, timeRatio01: 1, status: "alive" },
+                right: { score: 0, timeRatio01: 1, status: "alive" },
                 lobby: {
                   meLabel: "--",
-                  otherLabel: "未加入",
+                  otherLabel: "对方 未加入",
                   error: this.online?.getError()?.message ?? null,
                   readyEnabled: false,
                   readyText: "准备",
@@ -194,10 +189,13 @@ export class GameApp {
           this.singleResult = null;
         });
       },
-      onCreateRoom: () => {
+      onCreateRoom: (params) => {
         this.flow = reduceFlow(this.flow, { type: "menu.online" });
         this.connectOnline();
-        this.online?.createRoom();
+        try {
+          localStorage.setItem("game.onlineDifficulty", params.difficulty);
+        } catch {}
+        this.online?.createRoom(params);
       },
       onJoinRoom: (roomId) => {
         this.flow = reduceFlow(this.flow, { type: "menu.online" });
@@ -262,7 +260,10 @@ export class GameApp {
         const state = this.online?.getState();
         if (state?.status !== "playing") return;
         const me = this.online?.getJoined()?.playerId;
-        if (me) this.renderer.triggerOnlineChop(me, side);
+        if (!me) return;
+        const meView = me === "p1" ? state.p1 : state.p2;
+        if (meView.status === "dead") return;
+        this.renderer.triggerOnlineChop("p2", side);
         this.online?.sendInput(side);
         this.audio.playChop();
         if (this.vibrationEnabled) navigator.vibrate?.(12);
