@@ -18,6 +18,8 @@ export type Overlays = {
   leaderboardList: HTMLDivElement;
   leaderboardBackBtn: HTMLButtonElement;
   result: HTMLDivElement;
+  resultTitle: HTMLDivElement;
+  resultSubtitle: HTMLDivElement;
   resultScore: HTMLSpanElement;
   resultBestScore: HTMLSpanElement;
   resultCongrats: HTMLDivElement;
@@ -262,6 +264,10 @@ export function createOverlays(doc: Document): Overlays {
   resultTitle.className = "result-title";
   resultTitle.textContent = "失败";
 
+  const resultSubtitle = doc.createElement("div");
+  resultSubtitle.className = "result-subtitle";
+  resultSubtitle.style.display = "none";
+
   const resultCongrats = doc.createElement("div");
   resultCongrats.className = "result-congrats";
   resultCongrats.textContent = "恭喜！打破记录！";
@@ -297,7 +303,7 @@ export function createOverlays(doc: Document): Overlays {
   menuBtn.textContent = "返回菜单";
   menuBtn.dataset.action = "nav.menu";
   resultActions.append(restartBtn, menuBtn);
-  resultCard.append(resultTitle, resultCongrats, resultLine, bestLine, resultActions);
+  resultCard.append(resultTitle, resultSubtitle, resultCongrats, resultLine, bestLine, resultActions);
   result.append(confetti, resultCard);
 
   const leaderboard = doc.createElement("div");
@@ -357,6 +363,8 @@ export function createOverlays(doc: Document): Overlays {
     leaderboardList: boardList,
     leaderboardBackBtn: boardBack,
     result,
+    resultTitle,
+    resultSubtitle,
     resultScore,
     resultBestScore,
     resultCongrats,
@@ -499,12 +507,16 @@ export function showLeaderboard(
 
 export function showResult(
   overlays: Overlays,
-  params: { score: number; bestScore?: number; isNewRecord?: boolean }
+  params: { score: number; bestScore?: number; isNewRecord?: boolean; title?: string; subtitle?: string }
 ): void {
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "none";
   overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "flex";
+  overlays.resultTitle.textContent = params.title ?? "失败";
+  const subtitle = params.subtitle?.trim();
+  overlays.resultSubtitle.textContent = subtitle ?? "";
+  overlays.resultSubtitle.style.display = subtitle ? "block" : "none";
   overlays.resultScore.textContent = String(params.score);
 
   if (params.bestScore !== undefined) {

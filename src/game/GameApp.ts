@@ -134,7 +134,8 @@ export class GameApp {
 
               if (s.status === "finished") {
                 const score = me === "p2" ? s.p2.score : s.p1.score;
-                showResult(this.overlays, { score });
+                const title = s.winner === "draw" ? "平局" : me && s.winner === me ? "胜利" : "失败";
+                showResult(this.overlays, { score, title, subtitle: `P1 ${s.p1.score} vs P2 ${s.p2.score}` });
               }
             } else {
               this.renderer.renderOnline({

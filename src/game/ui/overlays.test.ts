@@ -45,10 +45,11 @@ describe("ui overlays", () => {
 
   it("shows result overlay with actions", () => {
     const overlays = createOverlays(document);
-    showResult(overlays, { score: 9, bestScore: 12, isNewRecord: false });
+    showResult(overlays, { score: 9, bestScore: 12, isNewRecord: false, title: "胜利", subtitle: "P1 9 vs P2 12" } as any);
     expect(overlays.result.style.display).not.toBe("none");
     expect(overlays.result.textContent).toContain("9");
     expect(overlays.result.textContent).toContain("12");
+    expect(overlays.result.textContent).toContain("胜利");
     expect(overlays.result.textContent).toContain("返回菜单");
   });
 
