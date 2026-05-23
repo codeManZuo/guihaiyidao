@@ -8,6 +8,8 @@ export type PlayerSim = {
   side: Side;
   obstacleSide: Side | null;
   lastObstacleSide: Side | null;
+  upcomingObstacles: Array<Side | null>;
+  upcomingObstacleStyles: number[];
 };
 
 export type MatchSim = {
@@ -37,7 +39,9 @@ export function createMatchSim(seed: number, config: GameConfig): MatchSim {
       timeMs: config.time.startMs,
       side: "left",
       obstacleSide: null,
-      lastObstacleSide: null
+      lastObstacleSide: null,
+      upcomingObstacles: [],
+      upcomingObstacleStyles: []
     },
     p2: {
       status: "alive",
@@ -45,11 +49,15 @@ export function createMatchSim(seed: number, config: GameConfig): MatchSim {
       timeMs: config.time.startMs,
       side: "left",
       obstacleSide: null,
-      lastObstacleSide: null
+      lastObstacleSide: null,
+      upcomingObstacles: [],
+      upcomingObstacleStyles: []
     }
   };
-  sim.p1.obstacleSide = nextObstacle(sim, sim.p1);
-  sim.p2.obstacleSide = nextObstacle(sim, sim.p2);
+
+  initUpcoming(sim, sim.p1);
+  initUpcoming(sim, sim.p2);
+
   return sim;
 }
 
@@ -73,6 +81,7 @@ export function applyInput(sim: MatchSim, player: "p1" | "p2", side: Side): void
   const p = player === "p1" ? sim.p1 : sim.p2;
   if (p.status === "dead") return;
   p.side = side;
+  p.obstacleSide = p.upcomingObstacles[0] ?? null;
   const isDead = p.obstacleSide !== null && p.obstacleSide === side;
   if (isDead) {
     p.status = "dead";
@@ -81,7 +90,7 @@ export function applyInput(sim: MatchSim, player: "p1" | "p2", side: Side): void
   }
   p.score += 1;
   p.timeMs = Math.min(sim.maxTimeMs, p.timeMs + sim.addTimePerChopMs);
-  p.obstacleSide = nextObstacle(sim, p);
+  shiftUpcoming(sim, p);
 }
 
 export function computeWinner(sim: MatchSim): "p1" | "p2" | "draw" | null {
@@ -106,6 +115,24 @@ function nextObstacle(sim: MatchSim, p: PlayerSim): Side | null {
   return value;
 }
 
+function initUpcoming(sim: MatchSim, p: PlayerSim): void {
+  p.upcomingObstacles = [];
+  p.upcomingObstacleStyles = [];
+  for (let i = 0; i < UPCOMING_LENGTH; i += 1) {
+    p.upcomingObstacles.push(nextObstacle(sim, p));
+    p.upcomingObstacleStyles.push(nextStyleId(sim));
+  }
+  p.obstacleSide = p.upcomingObstacles[0] ?? null;
+}
+
+function shiftUpcoming(sim: MatchSim, p: PlayerSim): void {
+  p.upcomingObstacles.shift();
+  p.upcomingObstacleStyles.shift();
+  p.upcomingObstacles.push(nextObstacle(sim, p));
+  p.upcomingObstacleStyles.push(nextStyleId(sim));
+  p.obstacleSide = p.upcomingObstacles[0] ?? null;
+}
+
 function nextFloat01(sim: MatchSim): number {
   return nextUint32(sim) / 0xffffffff;
 }
@@ -119,3 +146,10 @@ function nextUint32(sim: MatchSim): number {
   sim.rng = x | 0;
   return sim.rng >>> 0;
 }
+
+function nextStyleId(sim: MatchSim): number {
+  return nextUint32(sim) % STYLE_VARIANTS;
+}
+
+const UPCOMING_LENGTH = 16;
+const STYLE_VARIANTS = 4;

@@ -8,7 +8,7 @@ describe("gameSim", () => {
     const sim = createMatchSim(123, defaultGameConfig());
     startMatch(sim);
 
-    sim.p1.obstacleSide = "left";
+    sim.p1.upcomingObstacles[0] = "left";
     applyInput(sim, "p1", "left");
 
     expect(sim.p1.status).toBe("dead");
@@ -22,16 +22,31 @@ describe("gameSim", () => {
     sim.p1.score = 10;
     sim.p2.score = 9;
 
-    sim.p1.obstacleSide = "left";
+    sim.p1.upcomingObstacles[0] = "left";
     applyInput(sim, "p1", "left");
     expect(sim.status).toBe("playing");
 
-    sim.p2.obstacleSide = "right";
+    sim.p2.upcomingObstacles[0] = "right";
     applyInput(sim, "p2", "right");
     expect(sim.status).toBe("finished");
 
     expect(typeof (gameSim as any).computeWinner).toBe("function");
     expect((gameSim as any).computeWinner(sim)).toBe("p1");
+  });
+
+  it("keeps upcoming obstacle styles stable across shifts", () => {
+    const sim = createMatchSim(123, defaultGameConfig());
+    startMatch(sim);
+
+    const beforeObstacle1 = sim.p1.upcomingObstacles[1];
+    const beforeStyle1 = sim.p1.upcomingObstacleStyles[1];
+
+    sim.p1.upcomingObstacles[0] = null;
+    applyInput(sim, "p1", "left");
+
+    expect(sim.p1.upcomingObstacles[0]).toBe(beforeObstacle1);
+    expect(sim.p1.upcomingObstacleStyles[0]).toBe(beforeStyle1);
+    expect(sim.p1.obstacleSide).toBe(sim.p1.upcomingObstacles[0]);
   });
 
   it("does not finish on tick when only one player is dead", () => {
