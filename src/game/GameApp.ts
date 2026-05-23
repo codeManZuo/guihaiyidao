@@ -304,8 +304,10 @@ export class GameApp {
   }
 
   private wsUrl(): string {
-    const proto = window.location.protocol === "https:" ? "wss" : "ws";
-    return `${proto}://${window.location.host}/ws`;
+    if (window.location.protocol === "https:") {
+      return `wss://${window.location.host}/ws`;
+    }
+    return `ws://${window.location.hostname}:8787`;
   }
 }
 
