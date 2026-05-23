@@ -6,7 +6,7 @@ export function attachOverlayActions(
   overlays: Overlays,
   handlers: {
     onSingle: () => void;
-    onCreateRoom: () => void;
+    onCreateRoom: (params: { roomId?: string; difficulty: Difficulty }) => void;
     onJoinRoom: (roomId: string) => void;
     onOnlineReady?: () => void;
     onOnlineStart?: () => void;
@@ -21,7 +21,13 @@ export function attachOverlayActions(
 ): () => void {
   const onSingle = () => handlers.onSingle();
 
-  const onCreateRoom = () => handlers.onCreateRoom();
+  const onCreateRoom = () => {
+    const roomIdRaw = overlays.menuRoomInput.value.trim();
+    const roomId = roomIdRaw.length > 0 ? roomIdRaw : undefined;
+    const raw = overlays.menuOnlineDifficultySelect.value;
+    const difficulty = (raw === "easy" || raw === "hard" ? raw : "normal") as Difficulty;
+    handlers.onCreateRoom({ roomId, difficulty });
+  };
   const onJoinRoom = () => handlers.onJoinRoom(overlays.menuRoomInput.value.trim());
 
   const onRestart = () => handlers.onRestart();

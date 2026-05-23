@@ -7,6 +7,7 @@ export type Overlays = {
   menuJoinRoomBtn: HTMLButtonElement;
   menuLeaderboardBtn: HTMLButtonElement;
   menuRoomInput: HTMLInputElement;
+  menuOnlineDifficultySelect: HTMLSelectElement;
   menuDifficultySelect: HTMLSelectElement;
   menuChopSoundSelect: HTMLSelectElement;
   menuChopSoundTestBtn: HTMLButtonElement;
@@ -76,6 +77,28 @@ export function createOverlays(doc: Document): Overlays {
   roomInput.autocomplete = "off";
   roomInput.spellcheck = false;
   roomLabel.appendChild(roomInput);
+
+  const onlineDifficultyLabel = doc.createElement("label");
+  onlineDifficultyLabel.className = "menu-label";
+  onlineDifficultyLabel.textContent = "在线难度";
+  const onlineDifficultySelect = doc.createElement("select");
+  onlineDifficultySelect.className = "menu-select";
+  const odEasy = doc.createElement("option");
+  odEasy.value = "easy";
+  odEasy.textContent = "容易";
+  const odNormal = doc.createElement("option");
+  odNormal.value = "normal";
+  odNormal.textContent = "正常";
+  const odHard = doc.createElement("option");
+  odHard.value = "hard";
+  odHard.textContent = "困难";
+  onlineDifficultySelect.append(odEasy, odNormal, odHard);
+  onlineDifficultySelect.value = "normal";
+  try {
+    const saved = localStorage.getItem("game.onlineDifficulty");
+    if (saved === "easy" || saved === "hard" || saved === "normal") onlineDifficultySelect.value = saved;
+  } catch {}
+  onlineDifficultyLabel.appendChild(onlineDifficultySelect);
 
   const createRoomBtn = doc.createElement("button");
   createRoomBtn.type = "button";
@@ -158,7 +181,7 @@ export function createOverlays(doc: Document): Overlays {
   soundTestBtn.dataset.action = "menu.sound.test";
   soundRow.append(soundLabel, soundTestBtn);
 
-  onlineForm.append(roomLabel);
+  onlineForm.append(roomLabel, onlineDifficultyLabel);
   menu.append(title, singleBtn, onlineForm, createRoomBtn, joinRoomBtn, leaderboardBtn, difficultyRow, soundRow);
 
   const hud = doc.createElement("div");
@@ -352,6 +375,7 @@ export function createOverlays(doc: Document): Overlays {
     menuJoinRoomBtn: joinRoomBtn,
     menuLeaderboardBtn: leaderboardBtn,
     menuRoomInput: roomInput,
+    menuOnlineDifficultySelect: onlineDifficultySelect,
     menuDifficultySelect: difficultySelect,
     menuChopSoundSelect: soundSelect,
     menuChopSoundTestBtn: soundTestBtn,

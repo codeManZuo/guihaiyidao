@@ -9,6 +9,7 @@ describe("ui overlays", () => {
     expect(overlays.menu.textContent).toContain("单人");
     expect(overlays.menu.textContent).toContain("创建房间");
     expect(overlays.menu.textContent).toContain("加入房间");
+    expect(overlays.menu.textContent).toContain("在线难度");
     expect(overlays.menu.textContent).toContain("排行榜");
   });
 
