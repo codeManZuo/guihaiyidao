@@ -3,6 +3,8 @@ import { attachTapHalvesInput } from "./input/TapHalvesInput";
 import { Renderer } from "./render/Renderer";
 import { chopSinglePlayer, createSinglePlayerRuntime, tickSinglePlayer } from "./state/singlePlayer";
 import { AudioBank } from "./audio/AudioBank";
+import { getMatchParams } from "./net/matchmaking";
+import { OnlineClient } from "./net/OnlineClient";
 
 export class GameApp {
   private renderer: Renderer;
@@ -11,6 +13,8 @@ export class GameApp {
   private single = createSinglePlayerRuntime(42);
   private audio = new AudioBank();
   private vibrationEnabled = true;
+  private online: OnlineClient | null = null;
+  private mode: "single" | "online";
 
   constructor(private root: HTMLElement) {
     const canvas = document.createElement("canvas");
@@ -19,10 +23,31 @@ export class GameApp {
     this.root.replaceChildren(canvas);
 
     this.renderer = new Renderer(canvas);
+
+    const params = getMatchParams();
+    this.mode = params.mode;
+    if (this.mode === "online") {
+      this.online = new OnlineClient(params.wsUrl, params.roomId, params.playerId);
+      this.online.connect();
+    }
     this.loop = new FixedTimestepLoop(
       {
-        update: (dtMs) => tickSinglePlayer(this.single, dtMs),
-        render: () => this.renderer.renderSingle(this.single)
+        update: (dtMs) => {
+          if (this.mode === "single") tickSinglePlayer(this.single, dtMs);
+        },
+        render: () => {
+          if (this.mode === "single") this.renderer.renderSingle(this.single);
+          if (this.mode === "online") {
+            const s = this.online?.getState();
+            if (s?.type === "state") this.renderer.renderOnline(s);
+            else
+              this.renderer.renderOnline({
+                status: "lobby",
+                p1: { score: 0, timeMs: 0, status: "alive" },
+                p2: { score: 0, timeMs: 0, status: "alive" }
+              });
+          }
+        }
       },
       1000 / 60
     );
@@ -32,6 +57,12 @@ export class GameApp {
     window.addEventListener("resize", resize);
 
     this.cleanupInput = attachTapHalvesInput(this.root, (side) => {
+      if (this.mode === "online") {
+        this.online?.sendInput(side);
+        this.audio.playChop();
+        if (this.vibrationEnabled) navigator.vibrate?.(12);
+        return;
+      }
       if (this.single.state.status === "dead") {
         this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0);
         return;
@@ -54,5 +85,6 @@ export class GameApp {
   stop(): void {
     this.loop.stop();
     this.cleanupInput?.();
+    this.online?.disconnect();
   }
 }

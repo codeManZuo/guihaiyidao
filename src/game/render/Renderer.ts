@@ -49,6 +49,46 @@ export class Renderer {
     }
   }
 
+  renderOnline(state: {
+    status: "lobby" | "playing" | "finished";
+    p1: { score: number; timeMs: number; status: "alive" | "dead" };
+    p2: { score: number; timeMs: number; status: "alive" | "dead" };
+  }): void {
+    const ctx = this.ctx();
+    const w = this.canvas.clientWidth;
+    const h = this.canvas.clientHeight;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#2b5a4b";
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.save();
+    ctx.fillStyle = "#d7d2c3";
+    ctx.font = "14px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`P1 ${String(state.p1.score).padStart(3, "0")}`, 16, 24);
+    ctx.fillText(`P2 ${String(state.p2.score).padStart(3, "0")}`, w - 90, 24);
+    ctx.restore();
+
+    const groundY = h - 40;
+    const leftX = w * 0.25;
+    const rightX = w * 0.75;
+    this.drawSimpleTree(ctx, leftX, groundY);
+    this.drawSimpleTree(ctx, rightX, groundY);
+
+    if (state.status === "lobby") {
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "#d7d2c3";
+      ctx.font = "20px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("等待另一位玩家加入...", w / 2, h / 2);
+      ctx.restore();
+    }
+  }
+
   private drawTreeAndPlayer(
     ctx: CanvasRenderingContext2D,
     w: number,
@@ -73,6 +113,17 @@ export class Renderer {
     ctx.fillRect(px - 18, groundY - 46, 36, 46);
     ctx.fillStyle = "#d7d2c3";
     ctx.fillRect(px + (rt.state.side === "left" ? 18 : -26), groundY - 26, 24, 10);
+    ctx.restore();
+  }
+
+  private drawSimpleTree(
+    ctx: CanvasRenderingContext2D,
+    centerX: number,
+    groundY: number
+  ): void {
+    ctx.save();
+    ctx.fillStyle = "#8a5a34";
+    ctx.fillRect(centerX - 26, groundY - 180, 52, 180);
     ctx.restore();
   }
 
