@@ -2,12 +2,15 @@ import { FixedTimestepLoop } from "./engine/FixedTimestepLoop";
 import { attachTapHalvesInput } from "./input/TapHalvesInput";
 import { Renderer } from "./render/Renderer";
 import { chopSinglePlayer, createSinglePlayerRuntime, tickSinglePlayer } from "./state/singlePlayer";
+import { AudioBank } from "./audio/AudioBank";
 
 export class GameApp {
   private renderer: Renderer;
   private loop: FixedTimestepLoop;
   private cleanupInput: (() => void) | null = null;
   private single = createSinglePlayerRuntime(42);
+  private audio = new AudioBank();
+  private vibrationEnabled = true;
 
   constructor(private root: HTMLElement) {
     const canvas = document.createElement("canvas");
@@ -34,6 +37,13 @@ export class GameApp {
         return;
       }
       chopSinglePlayer(this.single, side);
+      this.audio.playChop();
+      if (this.vibrationEnabled) navigator.vibrate?.(12);
+      const nextStatus = this.single.state.status as "alive" | "dead";
+      if (nextStatus === "dead") {
+        this.audio.playFail();
+        if (this.vibrationEnabled) navigator.vibrate?.([20, 30, 30]);
+      }
     });
   }
 
