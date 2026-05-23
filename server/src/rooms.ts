@@ -1,11 +1,13 @@
 import type { WebSocket } from "ws";
 import { createMatchSim, startMatch } from "./gameSim";
 import type { GameConfig } from "./config/gameConfig";
+import type { Difficulty } from "./protocol";
 
 export type Seat = "p1" | "p2";
 
 export type Room = {
   roomId: string;
+  difficulty: Difficulty;
   host: Seat;
   sockets: Map<Seat, WebSocket>;
   present: Record<Seat, boolean>;
@@ -16,6 +18,7 @@ export type Room = {
 };
 
 export type JoinError = "ROOM_NOT_FOUND" | "ROOM_FULL" | "INVALID_ROOM";
+export type CreateError = "INVALID_ROOM" | "ROOM_EXISTS";
 export type StartError = "ROOM_NOT_FOUND" | "NOT_HOST" | "NOT_READY" | "BAD_STATE";
 export type ReadyError = "ROOM_NOT_FOUND" | "BAD_STATE";
 
@@ -43,11 +46,25 @@ export class RoomStore {
     return Array.from(this.rooms.values());
   }
 
-  createRoom(ws: WebSocket): { room: Room; seat: Seat; isHost: boolean } {
-    const roomId = this.createUniqueRoomId();
+  createRoom(
+    ws: WebSocket,
+    params: { roomId?: string; difficulty: Difficulty }
+  ): { room: Room; seat: Seat; isHost: boolean } | { error: CreateError } {
+    const roomId =
+      typeof params.roomId === "string"
+        ? (() => {
+            if (!isValidRoomId(params.roomId)) return null;
+            if (this.rooms.has(params.roomId)) return undefined;
+            return params.roomId;
+          })()
+        : this.createUniqueRoomId();
+
+    if (roomId === null) return { error: "INVALID_ROOM" };
+    if (roomId === undefined) return { error: "ROOM_EXISTS" };
     const seat: Seat = this.rng() < 0.5 ? "p1" : "p2";
     const room: Room = {
       roomId,
+      difficulty: params.difficulty,
       host: seat,
       sockets: new Map([[seat, ws]]),
       present: { p1: seat === "p1", p2: seat === "p2" },

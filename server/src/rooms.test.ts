@@ -24,7 +24,7 @@ describe("rooms", () => {
     expect(typeof store.joinRoom).toBe("function");
 
     const ws1 = {} as any;
-    const created = store.createRoom(ws1);
+    const created = store.createRoom(ws1, { difficulty: "normal" });
     expect(created.room.roomId).toMatch(/^[0-9]{4}$/);
     expect(["p1", "p2"]).toContain(created.seat);
     expect(created.isHost).toBe(true);
@@ -48,15 +48,27 @@ describe("rooms", () => {
     const invalid = store.joinRoom("12ab", {} as any);
     expect(invalid).toEqual({ error: "INVALID_ROOM" });
 
-    const c = store.createRoom({} as any);
+    const c = store.createRoom({} as any, { difficulty: "normal" });
     const _j = store.joinRoom(c.room.roomId, {} as any);
     const full = store.joinRoom(c.room.roomId, {} as any);
     expect(full).toEqual({ error: "ROOM_FULL" });
   });
 
+  it("creates room with specified roomId and rejects duplicates", () => {
+    const store = new (RoomStore as any)(defaultGameConfig(), () => 0.123);
+    const c = store.createRoom({} as any, { roomId: "1234", difficulty: "hard" });
+    expect("error" in c).toBe(false);
+    if ("error" in c) throw new Error("unexpected error");
+    expect(c.room.roomId).toBe("1234");
+    expect(c.room.difficulty).toBe("hard");
+
+    const dup = store.createRoom({} as any, { roomId: "1234", difficulty: "normal" });
+    expect(dup).toEqual({ error: "ROOM_EXISTS" });
+  });
+
   it("requires both players ready and host to start", () => {
     const store = new (RoomStore as any)(defaultGameConfig(), () => 0.1);
-    const c = store.createRoom({} as any);
+    const c = store.createRoom({} as any, { difficulty: "normal" });
     const j = store.joinRoom(c.room.roomId, {} as any);
     if ("error" in j) throw new Error("unexpected error");
 
@@ -77,4 +89,3 @@ describe("rooms", () => {
     expect(c.room.sim.status).toBe("playing");
   });
 });
-

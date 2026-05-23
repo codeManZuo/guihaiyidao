@@ -6,7 +6,8 @@ import * as server from "./server";
 describe("server", () => {
   it("builds a v2 state message from a room snapshot", () => {
     const store = new RoomStore(defaultGameConfig(), () => 0.1);
-    const created = store.createRoom({} as any);
+    const created = store.createRoom({} as any, { difficulty: "normal" });
+    if ("error" in created) throw new Error("unexpected error");
     const joined = store.joinRoom(created.room.roomId, {} as any);
     if ("error" in joined) throw new Error("unexpected error");
 
@@ -30,4 +31,3 @@ describe("server", () => {
     expect(state.hostPlayerId).toBe(created.room.host);
   });
 });
-
