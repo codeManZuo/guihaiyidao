@@ -18,6 +18,7 @@ function errorMessageFor(code: ErrorMessageV2["code"]): string {
   if (code === "INVALID_ROOM") return "房间号无效（需要 4 位数字）";
   if (code === "ROOM_NOT_FOUND") return "房间不存在";
   if (code === "ROOM_FULL") return "房间已满";
+  if (code === "ROOM_EXISTS") return "房间号已存在/正在使用";
   if (code === "NOT_HOST") return "只有房主可以开始游戏";
   if (code === "NOT_READY") return "双方都需要准备完成才能开始";
   return "状态异常";
@@ -32,6 +33,7 @@ export function buildStateMessageV2(room: Room): StateMessageV2 {
     serverTimeMs: Date.now(),
     status: room.sim.status,
     hostPlayerId: room.host,
+    difficulty: room.difficulty,
     p1: {
       present: room.present.p1,
       online: room.present.p1 && room.online.p1,
@@ -40,7 +42,9 @@ export function buildStateMessageV2(room: Room): StateMessageV2 {
       timeMs: room.sim.p1.timeMs,
       status: room.sim.p1.status,
       side: room.sim.p1.side,
-      obstacleSide: room.sim.p1.obstacleSide
+      obstacleSide: room.sim.p1.obstacleSide,
+      upcomingObstacles: room.sim.p1.upcomingObstacles,
+      upcomingObstacleStyles: room.sim.p1.upcomingObstacleStyles
     },
     p2: {
       present: room.present.p2,
@@ -50,7 +54,9 @@ export function buildStateMessageV2(room: Room): StateMessageV2 {
       timeMs: room.sim.p2.timeMs,
       status: room.sim.p2.status,
       side: room.sim.p2.side,
-      obstacleSide: room.sim.p2.obstacleSide
+      obstacleSide: room.sim.p2.obstacleSide,
+      upcomingObstacles: room.sim.p2.upcomingObstacles,
+      upcomingObstacleStyles: room.sim.p2.upcomingObstacleStyles
     },
     winner
   };
@@ -81,7 +87,12 @@ export function startWsServer(): void {
       const wire = decode(raw);
 
       if (wire.type === "create_room") {
-        const { room, seat, isHost } = store.createRoom(ws);
+        const created = store.createRoom(ws, { roomId: wire.roomId, difficulty: wire.difficulty });
+        if ("error" in created) {
+          sendError(ws, created.error, errorMessageFor(created.error));
+          return;
+        }
+        const { room, seat, isHost } = created;
         conns.set(ws, { roomId: room.roomId, seat });
         send(ws, { v: 2, type: "joined", roomId: room.roomId, playerId: seat, isHost });
         broadcastState(room);

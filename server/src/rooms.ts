@@ -70,7 +70,7 @@ export class RoomStore {
       present: { p1: seat === "p1", p2: seat === "p2" },
       online: { p1: seat === "p1", p2: seat === "p2" },
       ready: { p1: false, p2: false },
-      sim: createMatchSim(hashSeed(roomId), this.config),
+      sim: createMatchSim(hashSeed(roomId), applyDifficulty(this.config, params.difficulty)),
       lastActiveAtMs: this.now()
     };
     this.rooms.set(roomId, room);
@@ -160,3 +160,14 @@ function hashSeed(input: string): number {
 }
 
 const MAX_ROOM_ID_ATTEMPTS = 25;
+
+function applyDifficulty(cfg: GameConfig, difficulty: Difficulty): GameConfig {
+  const decayScale = difficulty === "easy" ? 1.5 : difficulty === "hard" ? 2.5 : 2;
+  return {
+    ...cfg,
+    time: {
+      ...cfg.time,
+      decayScale
+    }
+  };
+}

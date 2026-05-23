@@ -29,5 +29,8 @@ describe("server", () => {
     expect(state.status).toBe("finished");
     expect(state.winner).toBe("draw");
     expect(state.hostPlayerId).toBe(created.room.host);
+    expect(state.difficulty).toBe("normal");
+    expect(state.p1.upcomingObstacles.length).toBeGreaterThan(1);
+    expect(state.p1.upcomingObstacleStyles.length).toBe(state.p1.upcomingObstacles.length);
   });
 });
