@@ -18,8 +18,20 @@ function broadcastState(roomId: string): void {
     roomId,
     serverTimeMs: Date.now(),
     status: room.sim.status,
-    p1: { score: room.sim.p1.score, timeMs: room.sim.p1.timeMs, status: room.sim.p1.status },
-    p2: { score: room.sim.p2.score, timeMs: room.sim.p2.timeMs, status: room.sim.p2.status }
+    p1: {
+      score: room.sim.p1.score,
+      timeMs: room.sim.p1.timeMs,
+      status: room.sim.p1.status,
+      side: room.sim.p1.side,
+      obstacleSide: room.sim.p1.obstacleSide
+    },
+    p2: {
+      score: room.sim.p2.score,
+      timeMs: room.sim.p2.timeMs,
+      status: room.sim.p2.status,
+      side: room.sim.p2.side,
+      obstacleSide: room.sim.p2.obstacleSide
+    }
   };
   const raw = encode(msg);
   for (const ws of room.sockets.values()) ws.send(raw);

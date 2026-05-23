@@ -23,8 +23,20 @@ export type StateMessageV1 = {
   roomId: string;
   serverTimeMs: number;
   status: "lobby" | "playing" | "finished";
-  p1: { score: number; timeMs: number; status: "alive" | "dead" };
-  p2: { score: number; timeMs: number; status: "alive" | "dead" };
+  p1: {
+    score: number;
+    timeMs: number;
+    status: "alive" | "dead";
+    side: Side;
+    obstacleSide: Side | null;
+  };
+  p2: {
+    score: number;
+    timeMs: number;
+    status: "alive" | "dead";
+    side: Side;
+    obstacleSide: Side | null;
+  };
 };
 
 export type ClientToServer = JoinMessageV1 | InputMessageV1;

@@ -43,8 +43,8 @@ export class GameApp {
             else
               this.renderer.renderOnline({
                 status: "lobby",
-                p1: { score: 0, timeMs: 0, status: "alive" },
-                p2: { score: 0, timeMs: 0, status: "alive" }
+                p1: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null },
+                p2: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null }
               });
           }
         }

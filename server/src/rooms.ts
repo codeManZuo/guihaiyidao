@@ -13,7 +13,7 @@ export class RoomStore {
   getOrCreate(roomId: string): Room {
     const existing = this.rooms.get(roomId);
     if (existing) return existing;
-    const room: Room = { roomId, sockets: new Map(), sim: createMatchSim() };
+    const room: Room = { roomId, sockets: new Map(), sim: createMatchSim(hashSeed(roomId)) };
     this.rooms.set(roomId, room);
     return room;
   }
@@ -36,4 +36,13 @@ export class RoomStore {
     room.sockets.delete(playerId);
     if (room.sockets.size === 0) this.rooms.delete(roomId);
   }
+}
+
+function hashSeed(input: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < input.length; i += 1) {
+    h ^= input.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h | 0;
 }

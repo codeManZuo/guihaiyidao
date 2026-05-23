@@ -51,8 +51,20 @@ export class Renderer {
 
   renderOnline(state: {
     status: "lobby" | "playing" | "finished";
-    p1: { score: number; timeMs: number; status: "alive" | "dead" };
-    p2: { score: number; timeMs: number; status: "alive" | "dead" };
+    p1: {
+      score: number;
+      timeMs: number;
+      status: "alive" | "dead";
+      side: "left" | "right";
+      obstacleSide: "left" | "right" | null;
+    };
+    p2: {
+      score: number;
+      timeMs: number;
+      status: "alive" | "dead";
+      side: "left" | "right";
+      obstacleSide: "left" | "right" | null;
+    };
   }): void {
     const ctx = this.ctx();
     const w = this.canvas.clientWidth;
@@ -73,8 +85,8 @@ export class Renderer {
     const groundY = h - 40;
     const leftX = w * 0.25;
     const rightX = w * 0.75;
-    this.drawSimpleTree(ctx, leftX, groundY);
-    this.drawSimpleTree(ctx, rightX, groundY);
+    this.drawOnlinePlayer(ctx, leftX, groundY, state.p1);
+    this.drawOnlinePlayer(ctx, rightX, groundY, state.p2);
 
     if (state.status === "lobby") {
       ctx.save();
@@ -124,6 +136,37 @@ export class Renderer {
     ctx.save();
     ctx.fillStyle = "#8a5a34";
     ctx.fillRect(centerX - 26, groundY - 180, 52, 180);
+    ctx.restore();
+  }
+
+  private drawOnlinePlayer(
+    ctx: CanvasRenderingContext2D,
+    treeX: number,
+    groundY: number,
+    p: {
+      status: "alive" | "dead";
+      side: "left" | "right";
+      obstacleSide: "left" | "right" | null;
+    }
+  ): void {
+    this.drawSimpleTree(ctx, treeX, groundY);
+
+    if (p.obstacleSide) {
+      ctx.save();
+      ctx.fillStyle = "#7a4a2b";
+      const y = groundY - 130;
+      if (p.obstacleSide === "left") ctx.fillRect(treeX - 150, y, 124, 20);
+      if (p.obstacleSide === "right") ctx.fillRect(treeX + 26, y, 124, 20);
+      ctx.restore();
+    }
+
+    ctx.save();
+    const px = p.side === "left" ? treeX - 90 : treeX + 90;
+    ctx.globalAlpha = p.status === "dead" ? 0.4 : 1;
+    ctx.fillStyle = "#c9b07f";
+    ctx.fillRect(px - 18, groundY - 46, 36, 46);
+    ctx.fillStyle = "#d7d2c3";
+    ctx.fillRect(px + (p.side === "left" ? 18 : -26), groundY - 26, 24, 10);
     ctx.restore();
   }
 
