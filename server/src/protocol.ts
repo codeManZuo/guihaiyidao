@@ -2,9 +2,13 @@ export type Side = "left" | "right";
 
 export type Seat = "p1" | "p2";
 
+export type Difficulty = "easy" | "normal" | "hard";
+
 export type CreateRoomV2 = {
   v: 2;
   type: "create_room";
+  roomId?: string;
+  difficulty: Difficulty;
 };
 
 export type JoinRoomV2 = {
@@ -45,7 +49,7 @@ export type JoinResultV2 = {
 export type ErrorMessageV2 = {
   v: 2;
   type: "error";
-  code: "ROOM_NOT_FOUND" | "ROOM_FULL" | "INVALID_ROOM" | "NOT_HOST" | "NOT_READY" | "BAD_STATE";
+  code: "ROOM_NOT_FOUND" | "ROOM_FULL" | "INVALID_ROOM" | "ROOM_EXISTS" | "NOT_HOST" | "NOT_READY" | "BAD_STATE";
   message: string;
 };
 
@@ -58,6 +62,8 @@ export type PlayerViewV2 = {
   status: "alive" | "dead";
   side: Side;
   obstacleSide: Side | null;
+  upcomingObstacles: Array<Side | null>;
+  upcomingObstacleStyles: number[];
 };
 
 export type StateMessageV2 = {
@@ -67,6 +73,7 @@ export type StateMessageV2 = {
   serverTimeMs: number;
   status: "lobby" | "playing" | "finished";
   hostPlayerId: Seat;
+  difficulty: Difficulty;
   p1: PlayerViewV2;
   p2: PlayerViewV2;
   winner: Seat | "draw" | null;
