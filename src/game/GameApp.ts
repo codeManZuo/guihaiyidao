@@ -3,49 +3,84 @@ import { attachTapHalvesInput } from "./input/TapHalvesInput";
 import { Renderer } from "./render/Renderer";
 import { chopSinglePlayer, createSinglePlayerRuntime, tickSinglePlayer } from "./state/singlePlayer";
 import { AudioBank } from "./audio/AudioBank";
-import { getMatchParams } from "./net/matchmaking";
 import { OnlineClient } from "./net/OnlineClient";
+import { createInitialFlow, reduceFlow, type FlowState } from "./ui/flow";
+import { createOverlays, showHudOnline, showHudSingle, showMenu, showResult, type Overlays } from "./ui/overlays";
+import { attachOverlayActions } from "./ui/actions";
 
 export class GameApp {
+  private overlays: Overlays;
   private renderer: Renderer;
   private loop: FixedTimestepLoop;
   private cleanupInput: (() => void) | null = null;
+  private cleanupOverlays: (() => void) | null = null;
   private single = createSinglePlayerRuntime(42);
   private audio = new AudioBank();
   private vibrationEnabled = true;
   private online: OnlineClient | null = null;
-  private mode: "single" | "online";
+  private flow: FlowState;
 
   constructor(private root: HTMLElement) {
-    const canvas = document.createElement("canvas");
-    canvas.style.width = "100%";
-    canvas.style.height = "100%";
-    this.root.replaceChildren(canvas);
+    this.overlays = createOverlays(document);
+    this.root.replaceChildren(this.overlays.root);
 
-    this.renderer = new Renderer(canvas);
+    this.renderer = new Renderer(this.overlays.canvas);
 
-    const params = getMatchParams();
-    this.mode = params.mode;
-    if (this.mode === "online") {
-      this.online = new OnlineClient(params.wsUrl, params.roomId, params.playerId);
-      this.online.connect();
-    }
+    this.flow = createInitialFlow({ url: window.location.href });
+    if (this.flow.screen === "online") this.connectOnline();
+
     this.loop = new FixedTimestepLoop(
       {
         update: (dtMs) => {
-          if (this.mode === "single") tickSinglePlayer(this.single, dtMs);
+          if (this.flow.screen === "single") tickSinglePlayer(this.single, dtMs);
         },
         render: () => {
-          if (this.mode === "single") this.renderer.renderSingle(this.single);
-          if (this.mode === "online") {
+          if (this.flow.screen === "menu") {
+            showMenu(this.overlays);
+            return;
+          }
+
+          if (this.flow.screen === "single") {
+            this.renderer.renderSingle(this.single);
+            if (this.single.state.status === "dead") {
+              showResult(this.overlays, { score: this.single.state.score });
+            } else {
+              showHudSingle(this.overlays, {
+                score: this.single.state.score,
+                timeRatio01: this.single.state.timeMs / this.single.state.config.maxTimeMs
+              });
+            }
+            return;
+          }
+
+          if (this.flow.screen === "online") {
             const s = this.online?.getState();
-            if (s?.type === "state") this.renderer.renderOnline(s);
-            else
+            if (s?.type === "state") {
+              this.renderer.renderOnline(s);
+              const p1Ratio = s.p1.timeMs <= 0 ? 0 : s.p1.timeMs / 5000;
+              const p2Ratio = s.p2.timeMs <= 0 ? 0 : s.p2.timeMs / 5000;
+              showHudOnline(this.overlays, {
+                roomId: this.flow.roomId,
+                p1: { score: s.p1.score, timeRatio01: p1Ratio, status: s.p1.status },
+                p2: { score: s.p2.score, timeRatio01: p2Ratio, status: s.p2.status }
+              });
+
+              if (s.status === "finished") {
+                const score = this.flow.playerId === "p2" ? s.p2.score : s.p1.score;
+                showResult(this.overlays, { score });
+              }
+            } else {
               this.renderer.renderOnline({
                 status: "lobby",
                 p1: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null },
                 p2: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null }
               });
+              showHudOnline(this.overlays, {
+                roomId: this.flow.roomId,
+                p1: { score: 0, timeRatio01: 1, status: "alive" },
+                p2: { score: 0, timeRatio01: 1, status: "alive" }
+              });
+            }
           }
         }
       },
@@ -56,22 +91,48 @@ export class GameApp {
     resize();
     window.addEventListener("resize", resize);
 
-    this.cleanupInput = attachTapHalvesInput(this.root, (side) => {
-      if (this.mode === "online") {
+    this.cleanupOverlays = attachOverlayActions(this.overlays, {
+      onSingle: () => {
+        this.online?.disconnect();
+        this.flow = reduceFlow(this.flow, { type: "menu.single" });
+        this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0);
+      },
+      onOnline: ({ roomId, playerId }) => {
+        const wsUrl = this.flow.screen === "online" ? this.flow.wsUrl : "ws://localhost:8787";
+        this.flow = reduceFlow(this.flow, { type: "menu.online", roomId, playerId, wsUrl });
+        this.connectOnline();
+      },
+      onRestart: () => {
+        if (this.flow.screen === "single") {
+          this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0);
+          return;
+        }
+        if (this.flow.screen === "online") {
+          this.connectOnline();
+        }
+      },
+      onMenu: () => {
+        this.online?.disconnect();
+        this.flow = reduceFlow(this.flow, { type: "nav.menu" });
+      }
+    });
+
+    this.cleanupInput = attachTapHalvesInput(this.overlays.canvas, (side) => {
+      if (this.flow.screen === "online") {
         this.online?.sendInput(side);
         this.audio.playChop();
         if (this.vibrationEnabled) navigator.vibrate?.(12);
         return;
       }
-      if (this.single.state.status === "dead") {
-        this.single = createSinglePlayerRuntime((Math.random() * 1e9) | 0);
-        return;
-      }
+      if (this.flow.screen !== "single") return;
+
+      if (this.single.state.status === "dead") return;
+
       chopSinglePlayer(this.single, side);
       this.audio.playChop();
       if (this.vibrationEnabled) navigator.vibrate?.(12);
-      const nextStatus = this.single.state.status as "alive" | "dead";
-      if (nextStatus === "dead") {
+      const status = this.single.state.status as "alive" | "dead";
+      if (status === "dead") {
         this.audio.playFail();
         if (this.vibrationEnabled) navigator.vibrate?.([20, 30, 30]);
       }
@@ -85,6 +146,14 @@ export class GameApp {
   stop(): void {
     this.loop.stop();
     this.cleanupInput?.();
+    this.cleanupOverlays?.();
     this.online?.disconnect();
+  }
+
+  private connectOnline(): void {
+    if (this.flow.screen !== "online") return;
+    this.online?.disconnect();
+    this.online = new OnlineClient(this.flow.wsUrl, this.flow.roomId, this.flow.playerId);
+    this.online.connect();
   }
 }

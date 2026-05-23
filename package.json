@@ -10,6 +10,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
+    "jsdom": "^26.1.0",
     "typescript": "^5.6.3",
     "vite": "^6.0.0",
     "vitest": "^2.1.5"
