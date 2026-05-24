@@ -594,21 +594,26 @@ export function showMenu(
   overlays.menuJoinPanel.style.display = page === "join" ? "flex" : "none";
 
   const createErr = params?.create?.error ?? null;
-  overlays.menuCreateError.textContent = createErr ?? "";
-  overlays.menuCreateError.style.display = createErr ? "block" : "none";
+  if (overlays.menuCreateError.textContent !== (createErr ?? "")) overlays.menuCreateError.textContent = createErr ?? "";
+  const createErrDisplay = createErr ? "block" : "none";
+  if (overlays.menuCreateError.style.display !== createErrDisplay) overlays.menuCreateError.style.display = createErrDisplay;
 
   const joinErr = params?.join?.error ?? null;
-  overlays.menuJoinError.textContent = joinErr ?? "";
-  overlays.menuJoinError.style.display = joinErr ? "block" : "none";
+  if (overlays.menuJoinError.textContent !== (joinErr ?? "")) overlays.menuJoinError.textContent = joinErr ?? "";
+  const joinErrDisplay = joinErr ? "block" : "none";
+  if (overlays.menuJoinError.style.display !== joinErrDisplay) overlays.menuJoinError.style.display = joinErrDisplay;
 
-  overlays.menuJoinSuggestions.replaceChildren();
-  if (page === "join") {
-    const suggestions = params?.join?.suggestions ?? [];
+  const suggestions = page === "join" ? params?.join?.suggestions ?? [] : [];
+  const nextKey = suggestions.join(",");
+  const currentKey = overlays.menuJoinSuggestions.dataset.key ?? "";
+  if (currentKey !== nextKey) {
+    overlays.menuJoinSuggestions.dataset.key = nextKey;
+    overlays.menuJoinSuggestions.replaceChildren();
     for (const roomId of suggestions) {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "menu-suggestion";
-      (btn as any).dataset.roomid = roomId;
+      btn.dataset.roomid = roomId;
       btn.textContent = roomId;
       overlays.menuJoinSuggestions.appendChild(btn);
     }
