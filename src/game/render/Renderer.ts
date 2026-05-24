@@ -258,17 +258,18 @@ export class Renderer {
     ctx.save();
     const px = p.side === "left" ? treeX - 36 : treeX + 36;
     ctx.globalAlpha = p.status === "dead" ? 0.4 : 1;
-    const swing01 =
-      treeX < (this.pixelCanvas?.width || 1) / 2
-        ? this.p1SwingMs <= 0
-          ? 0
-          : 1 - this.p1SwingMs / 220
-        : this.p2SwingMs <= 0
-          ? 0
-          : 1 - this.p2SwingMs / 220;
-    this.drawLumberjack(ctx, px, m.groundY, p.side, swing01, p.status === "dead" ? 0.5 : 1);
+    const isLeftTree = treeX < (this.pixelCanvas?.width || 1) / 2;
+    const swing01 = isLeftTree
+      ? this.p1SwingMs <= 0
+        ? 0
+        : 1 - this.p1SwingMs / 220
+      : this.p2SwingMs <= 0
+        ? 0
+        : 1 - this.p2SwingMs / 220;
+    const torsoColor = isLeftTree ? "#b04a4a" : undefined;
+    this.drawLumberjack(ctx, px, m.groundY, p.side, swing01, p.status === "dead" ? 0.5 : 1, { torsoColor });
 
-    if (treeX < (this.pixelCanvas?.width || 1) / 2) {
+    if (isLeftTree) {
       if (this.p1CutFlashMs > 0) {
         const t = this.p1CutFlashMs / 140;
         this.drawCutFlash(ctx, treeX, m.groundY - m.segmentHeight, t);
@@ -644,7 +645,8 @@ export class Renderer {
     groundY: number,
     side: "left" | "right",
     swing01: number,
-    alpha: number
+    alpha: number,
+    params?: { torsoColor?: string }
   ): void {
     const dir = side === "left" ? 1 : -1;
     const gx = Math.round(x);
@@ -660,7 +662,7 @@ export class Renderer {
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    ctx.fillStyle = "#3d5fa8";
+    ctx.fillStyle = params?.torsoColor ?? "#3d5fa8";
     ctx.fillRect(gx - 4 + lean, gy - 18 + bounceY, 8, 10);
 
     ctx.fillStyle = "#2b3c6b";
