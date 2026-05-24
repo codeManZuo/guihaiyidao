@@ -40,6 +40,20 @@ export class GameApp {
       if (raw === "easy" || raw === "hard" || raw === "normal") this.difficulty = raw;
     } catch {}
 
+    try {
+      const raw = localStorage.getItem("audio.bgmVolume");
+      const v = raw ? Number(raw) : NaN;
+      if (Number.isFinite(v)) this.audio.setBgmVolume(Math.max(0, Math.min(1, v)));
+    } catch {}
+
+    try {
+      const raw = localStorage.getItem("audio.muted");
+      if (raw === "1") this.audio.setMuted(true);
+    } catch {}
+
+    this.overlays.muteBtn.classList.toggle("is-muted", this.audio.isMuted());
+    this.overlays.muteBtn.setAttribute("aria-pressed", this.audio.isMuted() ? "true" : "false");
+
     this.flow = createInitialFlow({ url: window.location.href });
 
     loadGameConfig().then((cfg) => {
@@ -52,6 +66,12 @@ export class GameApp {
           if (this.flow.screen === "single") tickSinglePlayer(this.single, dtMs);
         },
         render: () => {
+          const bgmMode = this.flow.screen === "menu" || this.flow.screen === "leaderboard" ? "menu" : "game";
+          this.audio.setBgmMode(bgmMode);
+          this.overlays.menuTitleRow.classList.toggle("is-vu-on", this.flow.screen === "menu" && !this.audio.isMuted());
+          this.overlays.muteBtn.classList.toggle("is-muted", this.audio.isMuted());
+          this.overlays.muteBtn.setAttribute("aria-pressed", this.audio.isMuted() ? "true" : "false");
+
           if (this.flow.screen === "menu") {
             showMenu(this.overlays);
             return;
@@ -179,6 +199,13 @@ export class GameApp {
     };
 
     this.cleanupOverlays = attachOverlayActions(this.overlays, {
+      onUserInteract: () => this.audio.unlockBgm(),
+      onToggleMute: (muted) => {
+        this.audio.setMuted(muted);
+        try {
+          localStorage.setItem("audio.muted", muted ? "1" : "0");
+        } catch {}
+      },
       onSingle: () => {
         this.online?.disconnect();
         this.flow = reduceFlow(this.flow, { type: "menu.single" });
@@ -252,10 +279,17 @@ export class GameApp {
       },
       onChopSoundTest: () => {
         this.audio.playChop();
+      },
+      onBgmVolume: (volume01) => {
+        this.audio.setBgmVolume(volume01);
+        try {
+          localStorage.setItem("audio.bgmVolume", String(volume01));
+        } catch {}
       }
     });
 
     this.cleanupInput = attachTapHalvesInput(this.overlays.canvas, (side) => {
+      this.audio.unlockBgm();
       if (this.flow.screen === "online") {
         const state = this.online?.getState();
         if (state?.status !== "playing") return;
@@ -295,6 +329,7 @@ export class GameApp {
     this.cleanupOverlays?.();
     this.cleanupResize?.();
     this.online?.disconnect();
+    this.audio.stopBgm();
   }
 
   private connectOnline(): void {

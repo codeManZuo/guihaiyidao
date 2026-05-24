@@ -48,6 +48,75 @@ body {
   padding: 20px;
 }
 
+.mute-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.25);
+  color: #d7d2c3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  touch-action: manipulation;
+}
+
+.mute-icon-off {
+  display: none;
+}
+
+.mute-btn.is-muted .mute-icon-on {
+  display: none;
+}
+
+.mute-btn.is-muted .mute-icon-off {
+  display: block;
+}
+
+.menu-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.menu-vu {
+  width: 26px;
+  height: 22px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 3px;
+  opacity: 0;
+  transform: translateY(1px);
+}
+
+.menu-title-row.is-vu-on .menu-vu {
+  opacity: 0.85;
+}
+
+.menu-vu-bar {
+  width: 3px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(215, 210, 195, 0.9);
+  animation: vu 0.55s ease-in-out infinite alternate;
+}
+
+@keyframes vu {
+  from {
+    height: 5px;
+    opacity: 0.5;
+  }
+  to {
+    height: 18px;
+    opacity: 1;
+  }
+}
+
 .menu-title {
   font-size: 28px;
   letter-spacing: 2px;
@@ -88,6 +157,12 @@ body {
   background: rgba(0, 0, 0, 0.15);
   font-size: 12px;
   opacity: 0.85;
+}
+
+.menu-range {
+  height: 38px;
+  accent-color: #c9b07f;
+  touch-action: pan-x;
 }
 
 .menu-btn-sm {

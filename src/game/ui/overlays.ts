@@ -2,6 +2,8 @@ export type Overlays = {
   root: HTMLDivElement;
   canvas: HTMLCanvasElement;
   menu: HTMLDivElement;
+  menuTitleRow: HTMLDivElement;
+  muteBtn: HTMLButtonElement;
   menuSingleBtn: HTMLButtonElement;
   menuCreateRoomBtn: HTMLButtonElement;
   menuJoinRoomBtn: HTMLButtonElement;
@@ -11,6 +13,7 @@ export type Overlays = {
   menuDifficultySelect: HTMLSelectElement;
   menuChopSoundSelect: HTMLSelectElement;
   menuChopSoundTestBtn: HTMLButtonElement;
+  menuBgmVolumeRange: HTMLInputElement;
   hud: HTMLDivElement;
   leaderboard: HTMLDivElement;
   leaderboardEasyBtn: HTMLButtonElement;
@@ -51,12 +54,40 @@ export function createOverlays(doc: Document): Overlays {
   const canvas = doc.createElement("canvas");
   canvas.className = "game-canvas";
 
+  const muteBtn = doc.createElement("button");
+  muteBtn.type = "button";
+  muteBtn.className = "mute-btn";
+  muteBtn.dataset.action = "audio.mute";
+  muteBtn.setAttribute("aria-label", "静音");
+  muteBtn.setAttribute("aria-pressed", "false");
+  muteBtn.innerHTML =
+    '<span class="mute-icon mute-icon-on" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11 5.5 7.7 8H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2.7L11 18.5a1 1 0 0 0 1.6-.8V6.3a1 1 0 0 0-1.6-.8ZM14.6 8.5a1 1 0 0 1 1.4 0 4 4 0 0 1 0 5.7 1 1 0 1 1-1.4-1.4 2 2 0 0 0 0-2.8 1 1 0 0 1 0-1.5ZM17.4 6.3a1 1 0 0 1 1.4 0 7 7 0 0 1 0 11.4 1 1 0 1 1-1.4-1.4 5 5 0 0 0 0-8.6 1 1 0 0 1 0-1.4Z"/></svg></span>' +
+    '<span class="mute-icon mute-icon-off" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11 5.5 7.7 8H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2.7L11 18.5a1 1 0 0 0 1.6-.8V6.3a1 1 0 0 0-1.6-.8ZM16.3 9.3a1 1 0 0 1 1.4 0L19 10.6l1.3-1.3a1 1 0 1 1 1.4 1.4L20.4 12l1.3 1.3a1 1 0 0 1-1.4 1.4L19 13.4l-1.3 1.3a1 1 0 0 1-1.4-1.4l1.3-1.3-1.3-1.3a1 1 0 0 1 0-1.4Z"/></svg></span>';
+
   const menu = doc.createElement("div");
   menu.className = "overlay overlay-menu";
+
+  const titleRow = doc.createElement("div");
+  titleRow.className = "menu-title-row";
+  const vuLeft = doc.createElement("div");
+  vuLeft.className = "menu-vu";
+  const vuRight = doc.createElement("div");
+  vuRight.className = "menu-vu";
+  for (let i = 0; i < 5; i += 1) {
+    const b1 = doc.createElement("span");
+    b1.className = "menu-vu-bar";
+    b1.setAttribute("style", `animation-delay:${i * 0.08}s`);
+    vuLeft.appendChild(b1);
+    const b2 = doc.createElement("span");
+    b2.className = "menu-vu-bar";
+    b2.setAttribute("style", `animation-delay:${(0.12 + i * 0.08).toFixed(2)}s`);
+    vuRight.appendChild(b2);
+  }
 
   const title = doc.createElement("div");
   title.className = "menu-title";
   title.textContent = "归海一刀";
+  titleRow.append(vuLeft, title, vuRight);
 
   const singleBtn = doc.createElement("button");
   singleBtn.type = "button";
@@ -181,8 +212,29 @@ export function createOverlays(doc: Document): Overlays {
   soundTestBtn.dataset.action = "menu.sound.test";
   soundRow.append(soundLabel, soundTestBtn);
 
+  const bgmRow = doc.createElement("div");
+  bgmRow.className = "menu-row";
+  const bgmLabel = doc.createElement("label");
+  bgmLabel.className = "menu-label";
+  bgmLabel.textContent = "背景音乐音量";
+  const bgmRange = doc.createElement("input");
+  bgmRange.type = "range";
+  bgmRange.min = "0";
+  bgmRange.max = "100";
+  bgmRange.step = "1";
+  bgmRange.className = "menu-range";
+  let bgmVolume01 = 0.5;
+  try {
+    const raw = localStorage.getItem("audio.bgmVolume");
+    const v = raw ? Number(raw) : NaN;
+    if (Number.isFinite(v)) bgmVolume01 = Math.max(0, Math.min(1, v));
+  } catch {}
+  bgmRange.value = String(Math.round(bgmVolume01 * 100));
+  bgmLabel.appendChild(bgmRange);
+  bgmRow.appendChild(bgmLabel);
+
   onlineForm.append(roomLabel, onlineDifficultyLabel);
-  menu.append(title, singleBtn, onlineForm, createRoomBtn, joinRoomBtn, leaderboardBtn, difficultyRow, soundRow);
+  menu.append(titleRow, singleBtn, onlineForm, createRoomBtn, joinRoomBtn, leaderboardBtn, difficultyRow, soundRow, bgmRow);
 
   const hud = doc.createElement("div");
   hud.className = "overlay overlay-hud";
@@ -364,12 +416,14 @@ export function createOverlays(doc: Document): Overlays {
   boardCard.append(boardTitle, boardTabs, boardList, boardBack);
   leaderboard.appendChild(boardCard);
 
-  root.append(canvas, menu, hud, leaderboard, result);
+  root.append(canvas, menu, hud, leaderboard, result, muteBtn);
 
   const overlays: Overlays = {
     root,
     canvas,
     menu,
+    menuTitleRow: titleRow,
+    muteBtn,
     menuSingleBtn: singleBtn,
     menuCreateRoomBtn: createRoomBtn,
     menuJoinRoomBtn: joinRoomBtn,
@@ -379,6 +433,7 @@ export function createOverlays(doc: Document): Overlays {
     menuDifficultySelect: difficultySelect,
     menuChopSoundSelect: soundSelect,
     menuChopSoundTestBtn: soundTestBtn,
+    menuBgmVolumeRange: bgmRange,
     hud,
     leaderboard,
     leaderboardEasyBtn: easyBtn,

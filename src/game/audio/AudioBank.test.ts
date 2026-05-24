@@ -2,6 +2,99 @@ import { describe, expect, it } from "vitest";
 import { AudioBank } from "./AudioBank";
 
 describe("AudioBank", () => {
+  it("does not play bgm when muted and resumes when unmuted", async () => {
+    const prevAudio = (globalThis as any).Audio;
+    const prevAudioContext = (globalThis as any).AudioContext;
+
+    class FakeAudio {
+      static plays = 0;
+      src = "";
+      loop = false;
+      preload = "";
+      volume = 1;
+      currentTime = 0;
+
+      constructor(src?: string) {
+        if (src) this.src = src;
+      }
+
+      play(): Promise<void> {
+        FakeAudio.plays += 1;
+        return Promise.resolve();
+      }
+
+      pause(): void {}
+    }
+
+    (globalThis as any).Audio = FakeAudio;
+    (globalThis as any).AudioContext = undefined;
+
+    try {
+      const a = new AudioBank();
+      a.setMuted(true);
+      a.setBgmMode("menu");
+      a.unlockBgm();
+      await Promise.resolve();
+      expect(FakeAudio.plays).toBe(0);
+
+      a.setMuted(false);
+      await Promise.resolve();
+      expect(FakeAudio.plays).toBeGreaterThanOrEqual(1);
+    } finally {
+      (globalThis as any).Audio = prevAudio;
+      (globalThis as any).AudioContext = prevAudioContext;
+    }
+  });
+
+  it("plays menu bgm after unlock and switches to game bgm", async () => {
+    const prevAudio = (globalThis as any).Audio;
+    const prevAudioContext = (globalThis as any).AudioContext;
+
+    class FakeAudio {
+      static plays: string[] = [];
+      static pauses: string[] = [];
+
+      src = "";
+      loop = false;
+      preload = "";
+      volume = 1;
+      currentTime = 0;
+
+      constructor(src?: string) {
+        if (src) this.src = src;
+      }
+
+      play(): Promise<void> {
+        FakeAudio.plays.push(this.src);
+        return Promise.resolve();
+      }
+
+      pause(): void {
+        FakeAudio.pauses.push(this.src);
+      }
+    }
+
+    (globalThis as any).Audio = FakeAudio;
+    (globalThis as any).AudioContext = undefined;
+
+    try {
+      const a = new AudioBank();
+      a.setBgmVolume(0.3);
+      a.setBgmMode("menu");
+      a.unlockBgm();
+      await Promise.resolve();
+      expect(FakeAudio.plays[0]).toContain("/assets/audio/bgm/sound_menu_background.mp3");
+
+      a.setBgmMode("game");
+      await Promise.resolve();
+      expect(FakeAudio.pauses.length).toBeGreaterThanOrEqual(1);
+      expect(FakeAudio.plays.some((s) => s.includes("/assets/audio/bgm/sound_game_background.mp3"))).toBe(true);
+    } finally {
+      (globalThis as any).Audio = prevAudio;
+      (globalThis as any).AudioContext = prevAudioContext;
+    }
+  });
+
   it("plays external mp3 chop sound through AudioContext when available", async () => {
     const prevAudio = (globalThis as any).Audio;
     const prevAudioContext = (globalThis as any).AudioContext;

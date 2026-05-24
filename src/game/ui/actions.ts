@@ -5,6 +5,8 @@ import type { Difficulty } from "../score/leaderboard";
 export function attachOverlayActions(
   overlays: Overlays,
   handlers: {
+    onUserInteract?: () => void;
+    onToggleMute?: (muted: boolean) => void;
     onSingle: () => void;
     onCreateRoom: (params: { roomId?: string; difficulty: Difficulty }) => void;
     onJoinRoom: (roomId: string) => void;
@@ -17,24 +19,51 @@ export function attachOverlayActions(
     onDifficulty?: (difficulty: Difficulty) => void;
     onChopSoundStyle?: (style: ChopSoundStyle) => void;
     onChopSoundTest?: () => void;
+    onBgmVolume?: (volume01: number) => void;
   }
 ): () => void {
-  const onSingle = () => handlers.onSingle();
+  const onUserInteract = () => handlers.onUserInteract?.();
+  const stopPointer = (e: Event) => {
+    if ("stopPropagation" in e) (e as any).stopPropagation();
+  };
+  const onSingle = () => {
+    onUserInteract();
+    handlers.onSingle();
+  };
 
   const onCreateRoom = () => {
+    onUserInteract();
     const roomIdRaw = overlays.menuRoomInput.value.trim();
     const roomId = roomIdRaw.length > 0 ? roomIdRaw : undefined;
     const raw = overlays.menuOnlineDifficultySelect.value;
     const difficulty = (raw === "easy" || raw === "hard" ? raw : "normal") as Difficulty;
     handlers.onCreateRoom({ roomId, difficulty });
   };
-  const onJoinRoom = () => handlers.onJoinRoom(overlays.menuRoomInput.value.trim());
+  const onJoinRoom = () => {
+    onUserInteract();
+    handlers.onJoinRoom(overlays.menuRoomInput.value.trim());
+  };
 
-  const onRestart = () => handlers.onRestart();
-  const onMenu = () => handlers.onMenu();
-  const onLeaderboard = () => handlers.onLeaderboard?.();
-  const onOnlineReady = () => handlers.onOnlineReady?.();
-  const onOnlineStart = () => handlers.onOnlineStart?.();
+  const onRestart = () => {
+    onUserInteract();
+    handlers.onRestart();
+  };
+  const onMenu = () => {
+    onUserInteract();
+    handlers.onMenu();
+  };
+  const onLeaderboard = () => {
+    onUserInteract();
+    handlers.onLeaderboard?.();
+  };
+  const onOnlineReady = () => {
+    onUserInteract();
+    handlers.onOnlineReady?.();
+  };
+  const onOnlineStart = () => {
+    onUserInteract();
+    handlers.onOnlineStart?.();
+  };
 
   const onLeaderboardDifficulty = (difficulty: Difficulty) => handlers.onLeaderboardDifficulty?.(difficulty);
   const onLeaderboardEasy = () => onLeaderboardDifficulty("easy");
@@ -53,7 +82,27 @@ export function attachOverlayActions(
     handlers.onChopSoundStyle?.(style);
   };
 
-  const onChopSoundTest = () => handlers.onChopSoundTest?.();
+  const onChopSoundTest = () => {
+    onUserInteract();
+    handlers.onChopSoundTest?.();
+  };
+
+  const onBgmInput = () => {
+    onUserInteract();
+    const raw = Number(overlays.menuBgmVolumeRange.value);
+    const pct = Number.isFinite(raw) ? raw : 50;
+    const next = Math.max(0, Math.min(1, pct / 100));
+    handlers.onBgmVolume?.(next);
+  };
+
+  const onToggleMute = () => {
+    onUserInteract();
+    const currentMuted = overlays.muteBtn.classList.contains("is-muted");
+    const nextMuted = !currentMuted;
+    overlays.muteBtn.classList.toggle("is-muted", nextMuted);
+    overlays.muteBtn.setAttribute("aria-pressed", nextMuted ? "true" : "false");
+    handlers.onToggleMute?.(nextMuted);
+  };
 
   overlays.menuSingleBtn.addEventListener("click", onSingle);
   overlays.menuCreateRoomBtn.addEventListener("click", onCreateRoom);
@@ -70,6 +119,10 @@ export function attachOverlayActions(
   overlays.menuDifficultySelect.addEventListener("change", onDifficulty);
   overlays.menuChopSoundSelect.addEventListener("change", onChopSoundStyle);
   overlays.menuChopSoundTestBtn.addEventListener("click", onChopSoundTest);
+  overlays.menuBgmVolumeRange.addEventListener("pointerdown", stopPointer as any);
+  overlays.menuBgmVolumeRange.addEventListener("input", onBgmInput);
+  overlays.muteBtn.addEventListener("pointerdown", stopPointer as any);
+  overlays.muteBtn.addEventListener("click", onToggleMute);
   onDifficulty();
   onChopSoundStyle();
 
@@ -89,5 +142,9 @@ export function attachOverlayActions(
     overlays.menuDifficultySelect.removeEventListener("change", onDifficulty);
     overlays.menuChopSoundSelect.removeEventListener("change", onChopSoundStyle);
     overlays.menuChopSoundTestBtn.removeEventListener("click", onChopSoundTest);
+    overlays.menuBgmVolumeRange.removeEventListener("pointerdown", stopPointer as any);
+    overlays.menuBgmVolumeRange.removeEventListener("input", onBgmInput);
+    overlays.muteBtn.removeEventListener("pointerdown", stopPointer as any);
+    overlays.muteBtn.removeEventListener("click", onToggleMute);
   };
 }

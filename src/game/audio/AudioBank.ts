@@ -7,6 +7,26 @@ export class AudioBank {
   private tungtungBuffer: AudioBuffer | null = null;
   private tungtungLoading: Promise<void> | null = null;
 
+  private bgmUnlocked = false;
+  private bgmVolume01 = 0.5;
+  private bgmMode: BgmMode = "menu";
+  private bgmMenu: HTMLAudioElement | null = null;
+  private bgmGame: HTMLAudioElement | null = null;
+  private bgmPlaying: BgmMode | null = null;
+
+  isMuted(): boolean {
+    return this.muted;
+  }
+
+  setMuted(muted: boolean): void {
+    this.muted = muted;
+    if (muted) {
+      this.stopBgm();
+      return;
+    }
+    if (this.bgmUnlocked) this.playBgm(this.bgmMode);
+  }
+
   private ensureContext(): AudioContext | null {
     if (this.ctx) return this.ctx;
     if (typeof AudioContext === "undefined") return null;
@@ -15,6 +35,33 @@ export class AudioBank {
       if (this.ctx.state === "suspended") void this.ctx.resume();
     } catch {}
     return this.ctx;
+  }
+
+  setBgmVolume(volume01: number): void {
+    const v = Math.max(0, Math.min(1, volume01));
+    this.bgmVolume01 = v;
+    if (this.bgmMenu) this.bgmMenu.volume = v;
+    if (this.bgmGame) this.bgmGame.volume = v;
+  }
+
+  setBgmMode(mode: BgmMode): void {
+    this.bgmMode = mode;
+    if (!this.bgmUnlocked) return;
+    if (this.muted) return;
+    this.playBgm(mode);
+  }
+
+  unlockBgm(): void {
+    if (this.bgmUnlocked) return;
+    this.bgmUnlocked = true;
+    if (this.muted) return;
+    this.playBgm(this.bgmMode);
+  }
+
+  stopBgm(): void {
+    this.bgmMenu?.pause();
+    this.bgmGame?.pause();
+    this.bgmPlaying = null;
   }
 
   setChopStyle(style: ChopSoundStyle): void {
@@ -99,6 +146,59 @@ export class AudioBank {
     return true;
   }
 
+  private playBgm(mode: BgmMode): void {
+    if (this.muted) return;
+    if (typeof Audio === "undefined") return;
+    if (!this.bgmMenu) {
+      const a = new Audio("/assets/audio/bgm/sound_menu_background.mp3");
+      a.loop = true;
+      a.preload = "auto";
+      a.volume = this.bgmVolume01;
+      this.bgmMenu = a;
+    }
+    if (!this.bgmGame) {
+      const a = new Audio("/assets/audio/bgm/sound_game_background.mp3");
+      a.loop = true;
+      a.preload = "auto";
+      a.volume = this.bgmVolume01;
+      this.bgmGame = a;
+    }
+
+    if (this.bgmPlaying === mode) return;
+    const menu = this.bgmMenu;
+    const game = this.bgmGame;
+    if (!menu || !game) return;
+
+    if (mode === "menu") {
+      game.pause();
+      try {
+        game.currentTime = 0;
+      } catch {}
+      try {
+        menu.currentTime = 0;
+      } catch {}
+      try {
+        const p = menu.play();
+        if (p && typeof (p as any).catch === "function") void (p as any).catch(() => {});
+      } catch {}
+      this.bgmPlaying = "menu";
+      return;
+    }
+
+    menu.pause();
+    try {
+      menu.currentTime = 0;
+    } catch {}
+    try {
+      game.currentTime = 0;
+    } catch {}
+    try {
+      const p = game.play();
+      if (p && typeof (p as any).catch === "function") void (p as any).catch(() => {});
+    } catch {}
+    this.bgmPlaying = "game";
+  }
+
   private async preloadTungtung(): Promise<void> {
     if (this.tungtungBuffer) return;
     if (this.tungtungLoading) return this.tungtungLoading;
@@ -123,6 +223,7 @@ export class AudioBank {
 }
 
 export type ChopSoundStyle = "mix" | "thud" | "swish" | "click" | "tungtung";
+export type BgmMode = "menu" | "game";
 
 async function decodeAudioBuffer(ctx: AudioContext, data: ArrayBuffer): Promise<AudioBuffer> {
   const out = ctx.decodeAudioData(data);
