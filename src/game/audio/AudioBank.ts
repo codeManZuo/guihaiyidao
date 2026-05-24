@@ -13,6 +13,9 @@ export class AudioBank {
   private bgmMenu: HTMLAudioElement | null = null;
   private bgmGame: HTMLAudioElement | null = null;
   private bgmPlaying: BgmMode | null = null;
+  private bgmGain: GainNode | null = null;
+  private bgmMenuSource: MediaElementAudioSourceNode | null = null;
+  private bgmGameSource: MediaElementAudioSourceNode | null = null;
 
   isMuted(): boolean {
     return this.muted;
@@ -40,8 +43,19 @@ export class AudioBank {
   setBgmVolume(volume01: number): void {
     const v = Math.max(0, Math.min(1, volume01));
     this.bgmVolume01 = v;
-    if (this.bgmMenu) this.bgmMenu.volume = v;
-    if (this.bgmGame) this.bgmGame.volume = v;
+    const ctx = this.ctx;
+    if (ctx && this.bgmGain) {
+      try {
+        this.bgmGain.gain.setValueAtTime(v, ctx.currentTime);
+      } catch {
+        try {
+          (this.bgmGain.gain as any).value = v;
+        } catch {}
+      }
+    } else {
+      if (this.bgmMenu) this.bgmMenu.volume = v;
+      if (this.bgmGame) this.bgmGame.volume = v;
+    }
   }
 
   setBgmMode(mode: BgmMode): void {
@@ -169,6 +183,12 @@ export class AudioBank {
     const game = this.bgmGame;
     if (!menu || !game) return;
 
+    const ctx = this.ensureContext();
+    if (ctx && typeof (ctx as any).createMediaElementSource === "function") {
+      this.ensureBgmGraph(ctx);
+      this.setBgmVolume(this.bgmVolume01);
+    }
+
     if (mode === "menu") {
       game.pause();
       try {
@@ -197,6 +217,35 @@ export class AudioBank {
       if (p && typeof (p as any).catch === "function") void (p as any).catch(() => {});
     } catch {}
     this.bgmPlaying = "game";
+  }
+
+  private ensureBgmGraph(ctx: AudioContext): void {
+    const menu = this.bgmMenu;
+    const game = this.bgmGame;
+    if (!menu || !game) return;
+
+    if (!this.bgmGain) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(this.bgmVolume01, ctx.currentTime);
+      g.connect(ctx.destination);
+      this.bgmGain = g;
+    }
+
+    if (!this.bgmMenuSource) {
+      try {
+        const src = ctx.createMediaElementSource(menu);
+        src.connect(this.bgmGain);
+        this.bgmMenuSource = src;
+      } catch {}
+    }
+
+    if (!this.bgmGameSource) {
+      try {
+        const src = ctx.createMediaElementSource(game);
+        src.connect(this.bgmGain);
+        this.bgmGameSource = src;
+      } catch {}
+    }
   }
 
   private async preloadTungtung(): Promise<void> {

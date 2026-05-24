@@ -2,6 +2,73 @@ import { describe, expect, it } from "vitest";
 import { AudioBank } from "./AudioBank";
 
 describe("AudioBank", () => {
+  it("uses AudioContext gain for bgm volume when AudioContext is available", async () => {
+    const prevAudio = (globalThis as any).Audio;
+    const prevAudioContext = (globalThis as any).AudioContext;
+
+    class FakeAudio {
+      src = "";
+      loop = false;
+      preload = "";
+      volume = 1;
+      currentTime = 0;
+
+      constructor(src?: string) {
+        if (src) this.src = src;
+      }
+
+      play(): Promise<void> {
+        return Promise.resolve();
+      }
+
+      pause(): void {}
+    }
+
+    class FakeAudioContext {
+      static lastGain: any = null;
+      state = "running";
+      currentTime = 0;
+      destination = {};
+
+      resume(): Promise<void> {
+        return Promise.resolve();
+      }
+
+      createGain(): any {
+        const g = {
+          gain: {
+            value: 1,
+            setValueAtTime: (v: number) => {
+              g.gain.value = v;
+            }
+          },
+          connect: () => g
+        };
+        FakeAudioContext.lastGain = g;
+        return g;
+      }
+
+      createMediaElementSource(): any {
+        return { connect: () => ({ connect: () => ({}) }) };
+      }
+    }
+
+    (globalThis as any).Audio = FakeAudio;
+    (globalThis as any).AudioContext = FakeAudioContext;
+
+    try {
+      const a = new AudioBank();
+      a.setBgmMode("menu");
+      a.unlockBgm();
+      await Promise.resolve();
+      a.setBgmVolume(0.2);
+      expect(FakeAudioContext.lastGain?.gain?.value).toBeCloseTo(0.2);
+    } finally {
+      (globalThis as any).Audio = prevAudio;
+      (globalThis as any).AudioContext = prevAudioContext;
+    }
+  });
+
   it("does not play bgm when muted and resumes when unmuted", async () => {
     const prevAudio = (globalThis as any).Audio;
     const prevAudioContext = (globalThis as any).AudioContext;
