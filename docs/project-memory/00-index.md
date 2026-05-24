@@ -47,5 +47,5 @@
 - 服务端架构：`03-server/architecture.md`
 - 配置说明：`04-config/game-properties.md`
 - 开发运行手册：`05-runbook/dev-commands.md`
+- CentOS 部署与更新（Nginx + Docker）：`05-runbook/centos-deploy-update.md`
 - 测试说明：`06-testing/tests.md`
-

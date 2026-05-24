@@ -74,3 +74,22 @@
   - 拉取失败回退默认配置
 - `GameApp` 在启动时异步加载配置，并在创建单人 runtime 时传入
 
+## 音频（本地）
+
+- 音频总控：`src/game/audio/AudioBank.ts`
+  - 音效：砍击/失败（WebAudio）
+  - 背景音乐：两套 BGM
+    - 菜单相关（menu/leaderboard）：`/assets/audio/bgm/sound_menu_background.mp3`
+    - 进入主界面后（single/online）：`/assets/audio/bgm/sound_game_background.mp3`
+  - 静音：右上角喇叭按钮，切换静音/取消静音（影响音效与 BGM）
+  - 音量：菜单中滑动条调节，仅影响本机；保存到 localStorage
+- 自动播放限制：
+  - 移动端浏览器通常要求“首次用户交互”后才允许播放音频
+  - 现实现为：首次点击任意按钮/触摸画布会触发 `unlockBgm()` 解锁播放
+
+## 移动端适配要点
+
+- iOS 输入框 focus 页面缩放：
+  - 菜单输入框在触屏设备上使用 `font-size: 16px` 避免 Safari 自动缩放
+  - 全局不再在 `html, body` 上禁用触控缩放，避免出现“放大后无法缩回”
+  - 仅在 Canvas 上使用 `touch-action: none`，保证游戏操作不被系统手势打断

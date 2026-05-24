@@ -18,7 +18,10 @@
 
 ### audio/
 
-- `AudioBank.ts`：音效资源与播放（砍击/失败等）
+- `AudioBank.ts`：音频总控（本地）
+  - 音效：砍击/失败等（WebAudio）
+  - 背景音乐：菜单/对局两套 BGM（HTMLAudioElement；在支持 WebAudio 时用 GainNode 做音量控制）
+  - 静音：一键切换，影响音效与 BGM
 
 ### config/
 
@@ -71,4 +74,4 @@
 - `flow.ts`：UI/模式流程状态机（menu/single/online）
 - `overlays.ts`：DOM 覆盖层（menu/hud/result 的 DOM 结构与 show* 方法）
 - `actions.ts`：集中绑定 overlays 事件，把回调交给 `GameApp`
-
+  - 包含：音量滑动条、静音按钮等交互绑定

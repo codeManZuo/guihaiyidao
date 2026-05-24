@@ -31,10 +31,13 @@
 
 ## 联机调试要点
 
-- 前端默认 WS 地址在 `GameApp` 中为 `ws://localhost:8787`
-  - 位置：`src/game/GameApp.ts`
-- 如果在手机上访问前端页面，`localhost` 指向手机自身，需要把 wsUrl 换成开发机的局域网 IP，例如 `ws://192.168.1.10:8787`
-  - 推荐做法：通过 URL 参数或在菜单输入中提供 roomId/playerId，并让 wsUrl 可控（已由 flow/overlays 支持一部分联机参数）
+- 前端 WS 地址由 `src/game/GameApp.ts` 动态决定：
+  - HTTPS：`wss://<当前域名>/ws`（通常由 Nginx /ws 反代）
+  - HTTP：`ws://<当前 hostname>:8787`
+- 手机联机本地测试（同一局域网）：
+  - 用手机访问开发机的局域网地址（例如 `http://192.168.1.10:5173`），前端会自动连 `ws://192.168.1.10:8787`
+- 线上部署建议：
+  - 推荐启用 HTTPS，并用 Nginx 把 `/ws` 反代到 `127.0.0.1:8787`（见 `05-runbook/centos-deploy-update.md`）
 
 ## 常见问题
 
@@ -43,4 +46,3 @@
 - 现象：启动 server 报 `EADDRINUSE`（8787 被占用），或 Vite 端口冲突
 - 处理：
   - 换端口：server 用 `PORT=xxxx`；Vite 会自动切换端口或在配置中指定
-

@@ -10,6 +10,9 @@
 - 渲染：Canvas 2D
   - 主渲染器：`src/game/render/Renderer.ts`
   - HUD/菜单：使用 DOM 覆盖层（不是 Canvas 文本），见 `src/game/ui/overlays.ts`
+- 音频：
+  - 音效/静音：WebAudio（`AudioContext`），见 `src/game/audio/AudioBank.ts`
+  - 背景音乐：HTMLAudioElement + WebAudio Gain（在可用时用 `createMediaElementSource` 统一调音量）
 - 测试：Vitest + jsdom
   - 配置：`vitest.config.ts`（`environment: "jsdom"`）
   - 测试分布：`src/**/*.test.ts`
@@ -30,4 +33,3 @@
 - `docs/`：设计/计划与项目记忆文档
   - `docs/superpowers/`：历史设计与计划
   - `docs/project-memory/`：本套“项目记忆”（给后续开发者/AI 快速理解）
-
