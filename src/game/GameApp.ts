@@ -10,6 +10,7 @@ import { attachOverlayActions } from "./ui/actions";
 import { defaultGameConfig, type GameConfig } from "./config/gameConfig";
 import { loadGameConfig } from "./config/loadConfig";
 import { readLeaderboard, submitScore, type Difficulty, type LeaderboardEntry } from "./score/leaderboard";
+import type { Side } from "./state/types";
 
 export class GameApp {
   private overlays: Overlays;
@@ -24,6 +25,7 @@ export class GameApp {
   private vibrationEnabled = true;
   private online: OnlineClient | null = null;
   private flow: FlowState;
+  private onlineMySidePrediction: { side: Side; untilPerfMs: number } | null = null;
   private leaderboardEntries: LeaderboardEntry[] = [];
   private singleResult: { bestScore: number; isNewRecord: boolean } | null = null;
   private difficulty: Difficulty = "normal";
@@ -129,7 +131,14 @@ export class GameApp {
               const me = joined?.playerId ?? null;
               const left = me === "p1" ? s.p2 : s.p1;
               const right = me === "p1" ? s.p1 : s.p2;
-              this.renderer.renderOnline({ status: s.status, p1: left, p2: right });
+              const nowPerfMs = performance.now();
+              if (this.onlineMySidePrediction && nowPerfMs > this.onlineMySidePrediction.untilPerfMs) this.onlineMySidePrediction = null;
+              if (s.status !== "playing") this.onlineMySidePrediction = null;
+              if (me && right.status === "dead") this.onlineMySidePrediction = null;
+              const predictedMySide = me ? this.onlineMySidePrediction?.side ?? null : null;
+              if (me && predictedMySide && right.side === predictedMySide) this.onlineMySidePrediction = null;
+              const rightForRender = predictedMySide ? { ...right, side: predictedMySide } : right;
+              this.renderer.renderOnline({ status: s.status, p1: left, p2: rightForRender });
               const max = this.config.time.maxMs || 1;
               const leftRatio = left.timeMs <= 0 ? 0 : left.timeMs / max;
               const rightRatio = right.timeMs <= 0 ? 0 : right.timeMs / max;
@@ -341,6 +350,7 @@ export class GameApp {
         if (!me) return;
         const meView = me === "p1" ? state.p1 : state.p2;
         if (meView.status === "dead") return;
+        this.onlineMySidePrediction = { side, untilPerfMs: performance.now() + 800 };
         this.renderer.triggerOnlineChop("p2", side);
         this.online?.sendInput(side);
         this.audio.playChop();
