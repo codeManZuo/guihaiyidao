@@ -166,7 +166,8 @@ docker run --rm \
   node:20-bullseye \
   bash -lc "npm ci && npm run build"
 
-nginx -t && systemctl reload nginx
+nginx -t
+/usr/sbin/nginx -s reload
 ```
 
 ## 6. 更新流程（推荐顺序）
