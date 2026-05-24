@@ -3,13 +3,24 @@ export type Overlays = {
   canvas: HTMLCanvasElement;
   menu: HTMLDivElement;
   menuTitleRow: HTMLDivElement;
+  menuMainPanel: HTMLDivElement;
+  menuCreatePanel: HTMLDivElement;
+  menuJoinPanel: HTMLDivElement;
   muteBtn: HTMLButtonElement;
   menuSingleBtn: HTMLButtonElement;
   menuCreateRoomBtn: HTMLButtonElement;
   menuJoinRoomBtn: HTMLButtonElement;
   menuLeaderboardBtn: HTMLButtonElement;
-  menuRoomInput: HTMLInputElement;
-  menuOnlineDifficultySelect: HTMLSelectElement;
+  menuCreateRoomInput: HTMLInputElement;
+  menuCreateDifficultySelect: HTMLSelectElement;
+  menuCreateError: HTMLDivElement;
+  menuCreateConfirmBtn: HTMLButtonElement;
+  menuCreateBackBtn: HTMLButtonElement;
+  menuJoinRoomInput: HTMLInputElement;
+  menuJoinSuggestions: HTMLDivElement;
+  menuJoinError: HTMLDivElement;
+  menuJoinConfirmBtn: HTMLButtonElement;
+  menuJoinBackBtn: HTMLButtonElement;
   menuDifficultySelect: HTMLSelectElement;
   menuChopSoundSelect: HTMLSelectElement;
   menuChopSoundTestBtn: HTMLButtonElement;
@@ -95,59 +106,30 @@ export function createOverlays(doc: Document): Overlays {
   singleBtn.textContent = "单人";
   singleBtn.dataset.action = "menu.single";
 
-  const onlineForm = doc.createElement("div");
-  onlineForm.className = "menu-online-form";
-
-  const roomLabel = doc.createElement("label");
-  roomLabel.className = "menu-label";
-  roomLabel.textContent = "房间号";
-  const roomInput = doc.createElement("input");
-  roomInput.className = "menu-input";
-  roomInput.value = "";
-  roomInput.inputMode = "numeric";
-  roomInput.autocomplete = "off";
-  roomInput.spellcheck = false;
-  roomLabel.appendChild(roomInput);
-
-  const onlineDifficultyLabel = doc.createElement("label");
-  onlineDifficultyLabel.className = "menu-label";
-  onlineDifficultyLabel.textContent = "在线难度";
-  const onlineDifficultySelect = doc.createElement("select");
-  onlineDifficultySelect.className = "menu-select";
-  const odEasy = doc.createElement("option");
-  odEasy.value = "easy";
-  odEasy.textContent = "容易";
-  const odNormal = doc.createElement("option");
-  odNormal.value = "normal";
-  odNormal.textContent = "正常";
-  const odHard = doc.createElement("option");
-  odHard.value = "hard";
-  odHard.textContent = "困难";
-  onlineDifficultySelect.append(odEasy, odNormal, odHard);
-  onlineDifficultySelect.value = "normal";
-  try {
-    const saved = localStorage.getItem("game.onlineDifficulty");
-    if (saved === "easy" || saved === "hard" || saved === "normal") onlineDifficultySelect.value = saved;
-  } catch {}
-  onlineDifficultyLabel.appendChild(onlineDifficultySelect);
-
   const createRoomBtn = doc.createElement("button");
   createRoomBtn.type = "button";
   createRoomBtn.className = "menu-btn";
   createRoomBtn.textContent = "创建房间";
-  createRoomBtn.dataset.action = "menu.online.create";
+  createRoomBtn.dataset.action = "menu.create";
 
   const joinRoomBtn = doc.createElement("button");
   joinRoomBtn.type = "button";
   joinRoomBtn.className = "menu-btn";
   joinRoomBtn.textContent = "加入房间";
-  joinRoomBtn.dataset.action = "menu.online.join";
+  joinRoomBtn.dataset.action = "menu.join";
 
   const leaderboardBtn = doc.createElement("button");
   leaderboardBtn.type = "button";
   leaderboardBtn.className = "menu-btn";
   leaderboardBtn.textContent = "排行榜";
   leaderboardBtn.dataset.action = "nav.leaderboard";
+
+  const menuMainPanel = doc.createElement("div");
+  menuMainPanel.className = "menu-panel";
+
+  const createJoinRow = doc.createElement("div");
+  createJoinRow.className = "menu-row menu-row-two";
+  createJoinRow.append(createRoomBtn, joinRoomBtn);
 
   const difficultyRow = doc.createElement("div");
   difficultyRow.className = "menu-row";
@@ -233,8 +215,118 @@ export function createOverlays(doc: Document): Overlays {
   bgmLabel.appendChild(bgmRange);
   bgmRow.appendChild(bgmLabel);
 
-  onlineForm.append(roomLabel, onlineDifficultyLabel);
-  menu.append(titleRow, singleBtn, onlineForm, createRoomBtn, joinRoomBtn, leaderboardBtn, difficultyRow, soundRow, bgmRow);
+  menuMainPanel.append(singleBtn, leaderboardBtn, difficultyRow, soundRow, createJoinRow, bgmRow);
+
+  const menuCreatePanel = doc.createElement("div");
+  menuCreatePanel.className = "menu-panel";
+  menuCreatePanel.style.display = "none";
+  const createTitle = doc.createElement("div");
+  createTitle.className = "menu-subtitle";
+  createTitle.textContent = "创建房间";
+
+  const createRoomLabel = doc.createElement("label");
+  createRoomLabel.className = "menu-label";
+  createRoomLabel.textContent = "房间号";
+  const createRoomInput = doc.createElement("input");
+  createRoomInput.className = "menu-input";
+  createRoomInput.value = "";
+  createRoomInput.inputMode = "numeric";
+  createRoomInput.autocomplete = "off";
+  createRoomInput.spellcheck = false;
+  createRoomLabel.appendChild(createRoomInput);
+
+  const createDifficultyLabel = doc.createElement("label");
+  createDifficultyLabel.className = "menu-label";
+  createDifficultyLabel.textContent = "在线难度";
+  const createDifficultySelect = doc.createElement("select");
+  createDifficultySelect.className = "menu-select";
+  const odEasy = doc.createElement("option");
+  odEasy.value = "easy";
+  odEasy.textContent = "容易";
+  const odNormal = doc.createElement("option");
+  odNormal.value = "normal";
+  odNormal.textContent = "正常";
+  const odHard = doc.createElement("option");
+  odHard.value = "hard";
+  odHard.textContent = "困难";
+  createDifficultySelect.append(odEasy, odNormal, odHard);
+  createDifficultySelect.value = "normal";
+  try {
+    const saved = localStorage.getItem("game.onlineDifficulty");
+    if (saved === "easy" || saved === "hard" || saved === "normal") createDifficultySelect.value = saved;
+  } catch {}
+  createDifficultyLabel.appendChild(createDifficultySelect);
+
+  const createForm = doc.createElement("div");
+  createForm.className = "menu-online-form";
+  createForm.append(createRoomLabel, createDifficultyLabel);
+
+  const createError = doc.createElement("div");
+  createError.className = "menu-error";
+  createError.style.display = "none";
+
+  const createBtns = doc.createElement("div");
+  createBtns.className = "menu-row menu-row-two";
+  const createConfirmBtn = doc.createElement("button");
+  createConfirmBtn.type = "button";
+  createConfirmBtn.className = "menu-btn";
+  createConfirmBtn.textContent = "确认创建";
+  createConfirmBtn.dataset.action = "menu.create.confirm";
+  const createBackBtn = doc.createElement("button");
+  createBackBtn.type = "button";
+  createBackBtn.className = "menu-btn";
+  createBackBtn.textContent = "返回";
+  createBackBtn.dataset.action = "nav.menu";
+  createBtns.append(createConfirmBtn, createBackBtn);
+
+  menuCreatePanel.append(createTitle, createForm, createError, createBtns);
+
+  const menuJoinPanel = doc.createElement("div");
+  menuJoinPanel.className = "menu-panel";
+  menuJoinPanel.style.display = "none";
+  const joinTitle = doc.createElement("div");
+  joinTitle.className = "menu-subtitle";
+  joinTitle.textContent = "加入房间";
+
+  const joinRoomLabel = doc.createElement("label");
+  joinRoomLabel.className = "menu-label";
+  joinRoomLabel.textContent = "房间号";
+  const joinRoomInput = doc.createElement("input");
+  joinRoomInput.className = "menu-input";
+  joinRoomInput.value = "";
+  joinRoomInput.inputMode = "numeric";
+  joinRoomInput.autocomplete = "off";
+  joinRoomInput.spellcheck = false;
+  joinRoomLabel.appendChild(joinRoomInput);
+
+  const joinForm = doc.createElement("div");
+  joinForm.className = "menu-online-form";
+  joinForm.append(joinRoomLabel);
+
+  const joinSuggestions = doc.createElement("div");
+  joinSuggestions.className = "menu-suggestions";
+
+  const joinError = doc.createElement("div");
+  joinError.className = "menu-error";
+  joinError.style.display = "none";
+
+  const joinBtns = doc.createElement("div");
+  joinBtns.className = "menu-row menu-row-two";
+  const joinConfirmBtn = doc.createElement("button");
+  joinConfirmBtn.type = "button";
+  joinConfirmBtn.className = "menu-btn";
+  joinConfirmBtn.textContent = "进入房间";
+  joinConfirmBtn.dataset.action = "menu.join.confirm";
+  const joinBackBtn = doc.createElement("button");
+  joinBackBtn.type = "button";
+  joinBackBtn.className = "menu-btn";
+  joinBackBtn.textContent = "返回";
+  joinBackBtn.dataset.action = "nav.menu";
+  joinBtns.append(joinConfirmBtn, joinBackBtn);
+
+  menuJoinPanel.append(joinTitle, joinForm, joinSuggestions, joinError, joinBtns);
+
+  menu.append(titleRow, menuMainPanel, menuCreatePanel, menuJoinPanel);
 
   const hud = doc.createElement("div");
   hud.className = "overlay overlay-hud";
@@ -423,13 +515,24 @@ export function createOverlays(doc: Document): Overlays {
     canvas,
     menu,
     menuTitleRow: titleRow,
+    menuMainPanel,
+    menuCreatePanel,
+    menuJoinPanel,
     muteBtn,
     menuSingleBtn: singleBtn,
     menuCreateRoomBtn: createRoomBtn,
     menuJoinRoomBtn: joinRoomBtn,
     menuLeaderboardBtn: leaderboardBtn,
-    menuRoomInput: roomInput,
-    menuOnlineDifficultySelect: onlineDifficultySelect,
+    menuCreateRoomInput: createRoomInput,
+    menuCreateDifficultySelect: createDifficultySelect,
+    menuCreateError: createError,
+    menuCreateConfirmBtn: createConfirmBtn,
+    menuCreateBackBtn: createBackBtn,
+    menuJoinRoomInput: joinRoomInput,
+    menuJoinSuggestions: joinSuggestions,
+    menuJoinError: joinError,
+    menuJoinConfirmBtn: joinConfirmBtn,
+    menuJoinBackBtn: joinBackBtn,
     menuDifficultySelect: difficultySelect,
     menuChopSoundSelect: soundSelect,
     menuChopSoundTestBtn: soundTestBtn,
@@ -470,11 +573,46 @@ export function createOverlays(doc: Document): Overlays {
   return overlays;
 }
 
-export function showMenu(overlays: Overlays): void {
+type MenuPage = "main" | "create" | "join";
+
+export function showMenu(
+  overlays: Overlays,
+  params?: {
+    page?: MenuPage;
+    create?: { error?: string | null };
+    join?: { suggestions?: string[]; error?: string | null };
+  }
+): void {
   overlays.menu.style.display = "flex";
   overlays.hud.style.display = "none";
   overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
+
+  const page: MenuPage = params?.page ?? "main";
+  overlays.menuMainPanel.style.display = page === "main" ? "flex" : "none";
+  overlays.menuCreatePanel.style.display = page === "create" ? "flex" : "none";
+  overlays.menuJoinPanel.style.display = page === "join" ? "flex" : "none";
+
+  const createErr = params?.create?.error ?? null;
+  overlays.menuCreateError.textContent = createErr ?? "";
+  overlays.menuCreateError.style.display = createErr ? "block" : "none";
+
+  const joinErr = params?.join?.error ?? null;
+  overlays.menuJoinError.textContent = joinErr ?? "";
+  overlays.menuJoinError.style.display = joinErr ? "block" : "none";
+
+  overlays.menuJoinSuggestions.replaceChildren();
+  if (page === "join") {
+    const suggestions = params?.join?.suggestions ?? [];
+    for (const roomId of suggestions) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "menu-suggestion";
+      (btn as any).dataset.roomid = roomId;
+      btn.textContent = roomId;
+      overlays.menuJoinSuggestions.appendChild(btn);
+    }
+  }
 }
 
 export function showHudSingle(overlays: Overlays, params: { score: number; timeRatio01: number }): void {

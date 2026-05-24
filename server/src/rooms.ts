@@ -46,6 +46,21 @@ export class RoomStore {
     return Array.from(this.rooms.values());
   }
 
+  listJoinableRoomIdsByPrefix(prefix: string): string[] {
+    const p = prefix.trim();
+    if (p.length === 0) return [];
+    if (!/^[0-9]{1,4}$/.test(p)) return [];
+    const ids: string[] = [];
+    for (const room of this.rooms.values()) {
+      if (!room.roomId.startsWith(p)) continue;
+      if (room.sim.status !== "lobby") continue;
+      if (room.present.p1 && room.present.p2) continue;
+      ids.push(room.roomId);
+    }
+    ids.sort();
+    return ids;
+  }
+
   createRoom(
     ws: WebSocket,
     params: { roomId?: string; difficulty: Difficulty }

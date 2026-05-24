@@ -8,8 +8,11 @@ export function attachOverlayActions(
     onUserInteract?: () => void;
     onToggleMute?: (muted: boolean) => void;
     onSingle: () => void;
-    onCreateRoom: (params: { roomId?: string; difficulty: Difficulty }) => void;
-    onJoinRoom: (roomId: string) => void;
+    onOpenCreate?: () => void;
+    onOpenJoin?: () => void;
+    onCreateRoomConfirm?: (params: { roomId?: string; difficulty: Difficulty }) => void;
+    onJoinRoomConfirm?: (roomId: string) => void;
+    onQueryRooms?: (prefix: string) => void;
     onOnlineReady?: () => void;
     onOnlineStart?: () => void;
     onRestart: () => void;
@@ -31,17 +34,66 @@ export function attachOverlayActions(
     handlers.onSingle();
   };
 
-  const onCreateRoom = () => {
+  const sanitizeRoomId = (raw: string): string => raw.replace(/[^0-9]/g, "").slice(0, 4);
+
+  const generateRoomId = (): string => String(Math.floor(Math.random() * 10_000)).padStart(4, "0");
+
+  const onOpenCreate = () => {
     onUserInteract();
-    const roomIdRaw = overlays.menuRoomInput.value.trim();
-    const roomId = roomIdRaw.length > 0 ? roomIdRaw : undefined;
-    const raw = overlays.menuOnlineDifficultySelect.value;
-    const difficulty = (raw === "easy" || raw === "hard" ? raw : "normal") as Difficulty;
-    handlers.onCreateRoom({ roomId, difficulty });
+    overlays.menuCreateRoomInput.value = generateRoomId();
+    handlers.onOpenCreate?.();
   };
-  const onJoinRoom = () => {
+  const onOpenJoin = () => {
     onUserInteract();
-    handlers.onJoinRoom(overlays.menuRoomInput.value.trim());
+    overlays.menuJoinRoomInput.value = "";
+    handlers.onOpenJoin?.();
+  };
+
+  const onCreateConfirm = () => {
+    onUserInteract();
+    const roomIdRaw = sanitizeRoomId(overlays.menuCreateRoomInput.value.trim());
+    const roomId = roomIdRaw.length > 0 ? roomIdRaw : undefined;
+    const raw = overlays.menuCreateDifficultySelect.value;
+    const difficulty = (raw === "easy" || raw === "hard" ? raw : "normal") as Difficulty;
+    handlers.onCreateRoomConfirm?.({ roomId, difficulty });
+  };
+
+  const onJoinConfirm = () => {
+    onUserInteract();
+    handlers.onJoinRoomConfirm?.(sanitizeRoomId(overlays.menuJoinRoomInput.value.trim()));
+  };
+
+  let roomQueryTimer: number | null = null;
+  let lastRoomQueryPrefix = "";
+  const onJoinRoomInput = () => {
+    const next = sanitizeRoomId(overlays.menuJoinRoomInput.value);
+    if (overlays.menuJoinRoomInput.value !== next) overlays.menuJoinRoomInput.value = next;
+    if (roomQueryTimer !== null) {
+      window.clearTimeout(roomQueryTimer);
+      roomQueryTimer = null;
+    }
+    const prefix = next;
+    if (prefix.length === 0) return;
+    if (prefix === lastRoomQueryPrefix) return;
+    roomQueryTimer = window.setTimeout(() => {
+      roomQueryTimer = null;
+      lastRoomQueryPrefix = prefix;
+      handlers.onQueryRooms?.(prefix);
+    }, 120);
+  };
+
+  const onCreateRoomInput = () => {
+    const next = sanitizeRoomId(overlays.menuCreateRoomInput.value);
+    if (overlays.menuCreateRoomInput.value !== next) overlays.menuCreateRoomInput.value = next;
+  };
+
+  const onJoinSuggestionClick = (e: Event) => {
+    const t = e.target as HTMLElement | null;
+    const btn = t && "closest" in t ? (t.closest("button") as HTMLButtonElement | null) : null;
+    const roomId = btn?.dataset?.roomid;
+    if (!roomId) return;
+    overlays.menuJoinRoomInput.value = roomId;
+    overlays.menuJoinRoomInput.focus();
   };
 
   const onRestart = () => {
@@ -105,8 +157,6 @@ export function attachOverlayActions(
   };
 
   overlays.menuSingleBtn.addEventListener("click", onSingle);
-  overlays.menuCreateRoomBtn.addEventListener("click", onCreateRoom);
-  overlays.menuJoinRoomBtn.addEventListener("click", onJoinRoom);
   overlays.menuLeaderboardBtn.addEventListener("click", onLeaderboard);
   overlays.onlineReadyBtn.addEventListener("click", onOnlineReady);
   overlays.onlineStartBtn.addEventListener("click", onOnlineStart);
@@ -123,13 +173,20 @@ export function attachOverlayActions(
   overlays.menuBgmVolumeRange.addEventListener("input", onBgmInput);
   overlays.muteBtn.addEventListener("pointerdown", stopPointer as any);
   overlays.muteBtn.addEventListener("click", onToggleMute);
+  overlays.menuCreateRoomBtn.addEventListener("click", onOpenCreate);
+  overlays.menuJoinRoomBtn.addEventListener("click", onOpenJoin);
+  overlays.menuCreateConfirmBtn.addEventListener("click", onCreateConfirm);
+  overlays.menuJoinConfirmBtn.addEventListener("click", onJoinConfirm);
+  overlays.menuCreateBackBtn.addEventListener("click", onMenu);
+  overlays.menuJoinBackBtn.addEventListener("click", onMenu);
+  overlays.menuCreateRoomInput.addEventListener("input", onCreateRoomInput);
+  overlays.menuJoinRoomInput.addEventListener("input", onJoinRoomInput);
+  overlays.menuJoinSuggestions.addEventListener("click", onJoinSuggestionClick);
   onDifficulty();
   onChopSoundStyle();
 
   return () => {
     overlays.menuSingleBtn.removeEventListener("click", onSingle);
-    overlays.menuCreateRoomBtn.removeEventListener("click", onCreateRoom);
-    overlays.menuJoinRoomBtn.removeEventListener("click", onJoinRoom);
     overlays.menuLeaderboardBtn.removeEventListener("click", onLeaderboard);
     overlays.onlineReadyBtn.removeEventListener("click", onOnlineReady);
     overlays.onlineStartBtn.removeEventListener("click", onOnlineStart);
@@ -146,5 +203,14 @@ export function attachOverlayActions(
     overlays.menuBgmVolumeRange.removeEventListener("input", onBgmInput);
     overlays.muteBtn.removeEventListener("pointerdown", stopPointer as any);
     overlays.muteBtn.removeEventListener("click", onToggleMute);
+    overlays.menuCreateRoomBtn.removeEventListener("click", onOpenCreate);
+    overlays.menuJoinRoomBtn.removeEventListener("click", onOpenJoin);
+    overlays.menuCreateConfirmBtn.removeEventListener("click", onCreateConfirm);
+    overlays.menuJoinConfirmBtn.removeEventListener("click", onJoinConfirm);
+    overlays.menuCreateBackBtn.removeEventListener("click", onMenu);
+    overlays.menuJoinBackBtn.removeEventListener("click", onMenu);
+    overlays.menuCreateRoomInput.removeEventListener("input", onCreateRoomInput);
+    overlays.menuJoinRoomInput.removeEventListener("input", onJoinRoomInput);
+    overlays.menuJoinSuggestions.removeEventListener("click", onJoinSuggestionClick);
   };
 }

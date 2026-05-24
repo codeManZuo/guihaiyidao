@@ -38,12 +38,25 @@ export type InputV2 = {
   clientTimeMs: number;
 };
 
+export type RoomsQueryV2 = {
+  v: 2;
+  type: "rooms_query";
+  prefix: string;
+};
+
 export type JoinResultV2 = {
   v: 2;
   type: "joined";
   roomId: string;
   playerId: Seat;
   isHost: boolean;
+};
+
+export type RoomsListV2 = {
+  v: 2;
+  type: "rooms_list";
+  prefix: string;
+  roomIds: string[];
 };
 
 export type ErrorMessageV2 = {
@@ -79,8 +92,8 @@ export type StateMessageV2 = {
   winner: Seat | "draw" | null;
 };
 
-export type ClientToServer = CreateRoomV2 | JoinRoomV2 | ReadyV2 | StartV2 | InputV2;
-export type ServerToClient = JoinResultV2 | StateMessageV2 | ErrorMessageV2;
+export type ClientToServer = CreateRoomV2 | JoinRoomV2 | ReadyV2 | StartV2 | InputV2 | RoomsQueryV2;
+export type ServerToClient = JoinResultV2 | StateMessageV2 | RoomsListV2 | ErrorMessageV2;
 export type WireMessage = ClientToServer | ServerToClient;
 
 export function decode(raw: string): WireMessage {

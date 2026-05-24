@@ -1,12 +1,12 @@
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
-import { decode, encode, type ErrorMessageV2, type JoinResultV2, type Seat, type StateMessageV2 } from "./protocol";
+import { decode, encode, type ErrorMessageV2, type JoinResultV2, type RoomsListV2, type Seat, type StateMessageV2 } from "./protocol";
 import { RoomStore, type Room } from "./rooms";
 import { applyInput, computeWinner, tick } from "./gameSim";
 import { loadGameConfigFromRepoRoot } from "./config/loadConfig";
 
 type Conn = { roomId: string; seat: Seat };
 
-function send(ws: WebSocket, msg: JoinResultV2 | StateMessageV2 | ErrorMessageV2): void {
+function send(ws: WebSocket, msg: JoinResultV2 | StateMessageV2 | RoomsListV2 | ErrorMessageV2): void {
   ws.send(encode(msg));
 }
 
@@ -108,6 +108,12 @@ export function startWsServer(): void {
         conns.set(ws, { roomId: joined.room.roomId, seat: joined.seat });
         send(ws, { v: 2, type: "joined", roomId: joined.room.roomId, playerId: joined.seat, isHost: joined.isHost });
         broadcastState(joined.room);
+        return;
+      }
+
+      if (wire.type === "rooms_query") {
+        const roomIds = store.listJoinableRoomIdsByPrefix(wire.prefix).slice(0, 10);
+        send(ws, { v: 2, type: "rooms_list", prefix: wire.prefix, roomIds });
         return;
       }
 

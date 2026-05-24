@@ -1,4 +1,4 @@
-import { decodeMessage, encodeMessage, type CreateRoomV2, type Difficulty, type ErrorMessageV2, type JoinResultV2, type StateMessageV2, type WireMessage } from "./protocol";
+import { decodeMessage, encodeMessage, type CreateRoomV2, type Difficulty, type ErrorMessageV2, type JoinResultV2, type RoomsListV2, type StateMessageV2, type WireMessage } from "./protocol";
 import type { Side } from "../state/types";
 
 type WebSocketLike = {
@@ -16,6 +16,7 @@ export class OnlineClient {
   private joined: { roomId: string; playerId: "p1" | "p2"; isHost: boolean } | null = null;
   private lastState: StateMessageV2 | null = null;
   private lastError: ErrorMessageV2 | null = null;
+  private lastRoomsList: { prefix: string; roomIds: string[] } | null = null;
   private seq = 0;
 
   constructor(
@@ -43,6 +44,10 @@ export class OnlineClient {
         this.joined = { roomId: j.roomId, playerId: j.playerId, isHost: j.isHost };
       }
       if (msg.type === "state") this.lastState = msg as StateMessageV2;
+      if (msg.type === "rooms_list") {
+        const list = msg as RoomsListV2;
+        this.lastRoomsList = { prefix: list.prefix, roomIds: list.roomIds };
+      }
       if (msg.type === "error") this.lastError = msg as ErrorMessageV2;
     };
     ws.onclose = () => {
@@ -54,6 +59,7 @@ export class OnlineClient {
     this.ws?.close();
     this.ws = null;
     this.pending = [];
+    this.lastRoomsList = null;
   }
 
   createRoom(params: { roomId?: string; difficulty: Difficulty }): void {
@@ -68,6 +74,10 @@ export class OnlineClient {
 
   joinRoom(roomId: string): void {
     this.sendOrQueue(encodeMessage({ v: 2, type: "join_room", roomId }));
+  }
+
+  queryRooms(prefix: string): void {
+    this.sendOrQueue(encodeMessage({ v: 2, type: "rooms_query", prefix }));
   }
 
   setReady(): void {
@@ -109,6 +119,10 @@ export class OnlineClient {
 
   getError(): ErrorMessageV2 | null {
     return this.lastError;
+  }
+
+  getRoomsList(): { prefix: string; roomIds: string[] } | null {
+    return this.lastRoomsList;
   }
 
   clearError(): void {

@@ -133,6 +133,20 @@ body {
   font-size: 16px;
 }
 
+.menu-panel {
+  width: min(360px, 86vw);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch;
+}
+
+.menu-subtitle {
+  font-size: 18px;
+  letter-spacing: 1px;
+  opacity: 0.95;
+}
+
 .menu-online-form {
   width: min(360px, 86vw);
   display: flex;
@@ -144,6 +158,41 @@ body {
   display: flex;
   gap: 10px;
   align-items: flex-end;
+}
+
+.menu-row-two {
+  align-items: stretch;
+}
+
+.menu-row-two .menu-btn {
+  width: 100%;
+}
+
+.menu-suggestions {
+  width: min(360px, 86vw);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.menu-suggestion {
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.18);
+  color: #d7d2c3;
+  font-size: 14px;
+}
+
+.menu-error {
+  width: min(360px, 86vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(229, 138, 122, 0.55);
+  background: rgba(229, 138, 122, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
 }
 
 .menu-hint {

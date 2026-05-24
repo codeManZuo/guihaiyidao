@@ -66,6 +66,33 @@ describe("rooms", () => {
     expect(dup).toEqual({ error: "ROOM_EXISTS" });
   });
 
+  it("can list joinable rooms by prefix", () => {
+    const store = new (RoomStore as any)(defaultGameConfig(), () => 0.123);
+    const ws = {} as any;
+
+    const a = store.createRoom(ws, { roomId: "1234", difficulty: "normal" });
+    if ("error" in a) throw new Error("unexpected error");
+    store.setReady(a.room.roomId, a.seat, true);
+    const aJoined = store.joinRoom(a.room.roomId, {} as any);
+    if ("error" in aJoined) throw new Error("unexpected error");
+    store.setReady(a.room.roomId, aJoined.seat, true);
+    store.start(a.room.roomId, a.seat);
+
+    const full = store.createRoom(ws, { roomId: "1299", difficulty: "normal" });
+    if ("error" in full) throw new Error("unexpected error");
+    const fullJoined = store.joinRoom(full.room.roomId, {} as any);
+    if ("error" in fullJoined) throw new Error("unexpected error");
+
+    const ok = store.createRoom(ws, { roomId: "1200", difficulty: "normal" });
+    if ("error" in ok) throw new Error("unexpected error");
+    const other = store.createRoom(ws, { roomId: "5555", difficulty: "normal" });
+    if ("error" in other) throw new Error("unexpected error");
+
+    expect(store.listJoinableRoomIdsByPrefix("12")).toEqual(["1200"]);
+    expect(store.listJoinableRoomIdsByPrefix("1")).toEqual(["1200"]);
+    expect(store.listJoinableRoomIdsByPrefix("ab")).toEqual([]);
+  });
+
   it("requires both players ready and host to start", () => {
     const store = new (RoomStore as any)(defaultGameConfig(), () => 0.1);
     const c = store.createRoom({} as any, { difficulty: "normal" });

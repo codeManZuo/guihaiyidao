@@ -6,12 +6,40 @@ describe("ui overlays", () => {
     const overlays = createOverlays(document);
     expect(overlays.menu.style.display).not.toBe("none");
     expect(overlays.hud.style.display).toBe("none");
-    expect(overlays.menu.textContent).toContain("单人");
-    expect(overlays.menu.textContent).toContain("创建房间");
-    expect(overlays.menu.textContent).toContain("加入房间");
-    expect(overlays.menu.textContent).toContain("在线难度");
-    expect(overlays.menu.textContent).toContain("背景音乐音量");
-    expect(overlays.menu.textContent).toContain("排行榜");
+    expect(overlays.menuMainPanel.style.display).not.toBe("none");
+    expect(overlays.menuCreatePanel.style.display).toBe("none");
+    expect(overlays.menuJoinPanel.style.display).toBe("none");
+    expect(overlays.menuMainPanel.textContent).toContain("单人");
+    expect(overlays.menuMainPanel.textContent).toContain("创建房间");
+    expect(overlays.menuMainPanel.textContent).toContain("加入房间");
+    expect(overlays.menuMainPanel.textContent).toContain("背景音乐音量");
+    expect(overlays.menuMainPanel.textContent).toContain("排行榜");
+  });
+
+  it("can switch menu pages", () => {
+    const overlays = createOverlays(document);
+    showMenu(overlays, { page: "create", create: { error: "房间号已存在/正在使用" } });
+    expect(overlays.menuMainPanel.style.display).toBe("none");
+    expect(overlays.menuCreatePanel.style.display).not.toBe("none");
+    expect(overlays.menuJoinPanel.style.display).toBe("none");
+    expect(overlays.menuCreatePanel.textContent).toContain("创建房间");
+    expect(overlays.menuCreatePanel.textContent).toContain("在线难度");
+    expect(overlays.menuCreatePanel.textContent).toContain("确认创建");
+    expect(overlays.menuCreateError.textContent).toContain("房间号已存在");
+
+    showMenu(overlays, { page: "join", join: { suggestions: ["1234", "1299"], error: null } });
+    expect(overlays.menuMainPanel.style.display).toBe("none");
+    expect(overlays.menuCreatePanel.style.display).toBe("none");
+    expect(overlays.menuJoinPanel.style.display).not.toBe("none");
+    expect(overlays.menuJoinPanel.textContent).toContain("加入房间");
+    expect(overlays.menuJoinPanel.textContent).toContain("进入房间");
+    expect(overlays.menuJoinSuggestions.textContent).toContain("1234");
+    expect(overlays.menuJoinSuggestions.textContent).toContain("1299");
+
+    showMenu(overlays, { page: "main" });
+    expect(overlays.menuMainPanel.style.display).not.toBe("none");
+    expect(overlays.menuCreatePanel.style.display).toBe("none");
+    expect(overlays.menuJoinPanel.style.display).toBe("none");
   });
 
   it("can show single HUD with score and time bar ratio", () => {

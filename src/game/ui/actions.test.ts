@@ -9,8 +9,10 @@ describe("overlay actions", () => {
 
     const cleanup = attachOverlayActions(overlays, {
       onSingle: () => {},
-      onCreateRoom: () => {},
-      onJoinRoom: () => {},
+      onOpenCreate: () => {},
+      onOpenJoin: () => {},
+      onCreateRoomConfirm: () => {},
+      onJoinRoomConfirm: () => {},
       onRestart: () => {},
       onMenu
     });
@@ -20,14 +22,51 @@ describe("overlay actions", () => {
     cleanup();
   });
 
+  it("invokes create/join navigation and confirm actions", () => {
+    const overlays = createOverlays(document);
+    const onOpenCreate = vi.fn();
+    const onOpenJoin = vi.fn();
+    const onCreateRoomConfirm = vi.fn();
+    const onJoinRoomConfirm = vi.fn();
+
+    const cleanup = attachOverlayActions(overlays, {
+      onSingle: () => {},
+      onOpenCreate,
+      onOpenJoin,
+      onCreateRoomConfirm,
+      onJoinRoomConfirm,
+      onRestart: () => {},
+      onMenu: () => {}
+    } as any);
+
+    overlays.menuCreateRoomBtn.click();
+    expect(onOpenCreate).toHaveBeenCalledTimes(1);
+
+    overlays.menuJoinRoomBtn.click();
+    expect(onOpenJoin).toHaveBeenCalledTimes(1);
+
+    overlays.menuCreateRoomInput.value = "1234";
+    overlays.menuCreateDifficultySelect.value = "hard";
+    overlays.menuCreateConfirmBtn.click();
+    expect(onCreateRoomConfirm).toHaveBeenCalledWith({ roomId: "1234", difficulty: "hard" });
+
+    overlays.menuJoinRoomInput.value = "1299";
+    overlays.menuJoinConfirmBtn.click();
+    expect(onJoinRoomConfirm).toHaveBeenCalledWith("1299");
+
+    cleanup();
+  });
+
   it("invokes onBgmVolume when scrolling bgm control", () => {
     const overlays = createOverlays(document);
     const onBgmVolume = vi.fn();
 
     const cleanup = attachOverlayActions(overlays, {
       onSingle: () => {},
-      onCreateRoom: () => {},
-      onJoinRoom: () => {},
+      onOpenCreate: () => {},
+      onOpenJoin: () => {},
+      onCreateRoomConfirm: () => {},
+      onJoinRoomConfirm: () => {},
       onRestart: () => {},
       onMenu: () => {},
       onBgmVolume

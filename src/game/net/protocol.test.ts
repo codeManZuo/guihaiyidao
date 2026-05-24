@@ -59,7 +59,7 @@ describe("net protocol", () => {
         upcomingObstacleStyles: [2, 3]
       },
       winner: null
-    } as const;
+    } as any;
 
     expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
   });
@@ -67,5 +67,12 @@ describe("net protocol", () => {
   it("round-trips v2 error ROOM_EXISTS", () => {
     const msg = { v: 2, type: "error", code: "ROOM_EXISTS", message: "x" } as const;
     expect(decodeMessage(encodeMessage(msg))).toEqual(msg);
+  });
+
+  it("round-trips v2 rooms query/list", () => {
+    const q = { v: 2, type: "rooms_query", prefix: "12" } as const;
+    expect(decodeMessage(encodeMessage(q))).toEqual(q);
+    const list = { v: 2, type: "rooms_list", prefix: "12", roomIds: ["1234", "1299"] } as const;
+    expect(decodeMessage(encodeMessage(list))).toEqual(list);
   });
 });

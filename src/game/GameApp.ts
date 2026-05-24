@@ -73,7 +73,24 @@ export class GameApp {
           this.overlays.muteBtn.setAttribute("aria-pressed", this.audio.isMuted() ? "true" : "false");
 
           if (this.flow.screen === "menu") {
-            showMenu(this.overlays);
+            const page = this.flow.page;
+            const joined = this.online?.getJoined();
+            if ((page === "create" || page === "join") && joined) {
+              this.flow = reduceFlow(this.flow, { type: "menu.online" });
+              return;
+            }
+
+            const createError = page === "create" ? this.online?.getError()?.message ?? null : null;
+            const joinError = page === "join" ? this.online?.getError()?.message ?? null : null;
+            const joinPrefix = this.overlays.menuJoinRoomInput.value.trim();
+            const list = page === "join" ? this.online?.getRoomsList() : null;
+            const suggestions = page === "join" && list && list.prefix === joinPrefix ? list.roomIds : [];
+
+            showMenu(this.overlays, {
+              page,
+              create: { error: createError },
+              join: { suggestions, error: joinError }
+            });
             return;
           }
 
@@ -208,6 +225,7 @@ export class GameApp {
       },
       onSingle: () => {
         this.online?.disconnect();
+        this.online = null;
         this.flow = reduceFlow(this.flow, { type: "menu.single" });
         const seed = (Math.random() * 1e9) | 0;
         loadGameConfig().then((cfg) => {
@@ -216,18 +234,43 @@ export class GameApp {
           this.singleResult = null;
         });
       },
-      onCreateRoom: (params) => {
-        this.flow = reduceFlow(this.flow, { type: "menu.online" });
-        this.connectOnline();
+      onOpenCreate: () => {
+        this.online?.clearError();
+        this.flow = reduceFlow(this.flow, { type: "menu.create" });
+        this.overlays.menuCreateRoomInput.focus();
+      },
+      onOpenJoin: () => {
+        this.online?.disconnect();
+        this.online = new OnlineClient({ url: this.wsUrl() });
+        this.online.connect();
+        this.online.clearError();
+        this.flow = reduceFlow(this.flow, { type: "menu.join" });
+        this.overlays.menuJoinRoomInput.focus();
+      },
+      onCreateRoomConfirm: (params) => {
+        this.online?.disconnect();
+        this.online = new OnlineClient({ url: this.wsUrl() });
+        this.online.connect();
+        this.online.clearError();
         try {
           localStorage.setItem("game.onlineDifficulty", params.difficulty);
         } catch {}
         this.online?.createRoom(params);
       },
-      onJoinRoom: (roomId) => {
-        this.flow = reduceFlow(this.flow, { type: "menu.online" });
-        this.connectOnline();
+      onJoinRoomConfirm: (roomId) => {
+        this.online?.disconnect();
+        this.online = new OnlineClient({ url: this.wsUrl() });
+        this.online.connect();
+        this.online.clearError();
         this.online?.joinRoom(roomId);
+      },
+      onQueryRooms: (prefix) => {
+        if (!this.online) {
+          this.online = new OnlineClient({ url: this.wsUrl() });
+          this.online.connect();
+        }
+        this.online.clearError();
+        this.online.queryRooms(prefix);
       },
       onOnlineReady: () => {
         this.online?.setReady();
@@ -258,6 +301,7 @@ export class GameApp {
       },
       onMenu: () => {
         this.online?.disconnect();
+        this.online = null;
         this.flow = reduceFlow(this.flow, { type: "nav.menu" });
         this.singleResult = null;
       },
@@ -333,10 +377,10 @@ export class GameApp {
   }
 
   private connectOnline(): void {
-    if (this.flow.screen !== "online") return;
-    this.online?.disconnect();
-    this.online = new OnlineClient({ url: this.wsUrl() });
-    this.online.connect();
+    if (!this.online) {
+      this.online = new OnlineClient({ url: this.wsUrl() });
+      this.online.connect();
+    }
   }
 
   private wsUrl(): string {

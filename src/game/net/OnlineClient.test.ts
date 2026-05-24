@@ -78,4 +78,24 @@ describe("OnlineClient v2", () => {
     expect(msg.side).toBe("left");
     expect(msg.clientTimeMs).toBe(9999);
   });
+
+  it("can query rooms and store rooms_list result", () => {
+    const ws = new FakeWebSocket();
+    const client = new (OnlineClient as any)({
+      url: "ws://example/ws",
+      wsFactory: () => ws as any,
+      nowMs: () => 1234,
+      perfNowMs: () => 9999
+    });
+
+    (client as any).connect();
+    ws.open();
+
+    (client as any).queryRooms("12");
+    expect(ws.sent.length).toBe(1);
+    expect(JSON.parse(ws.sent[0])).toEqual({ v: 2, type: "rooms_query", prefix: "12" });
+
+    ws.message(JSON.stringify({ v: 2, type: "rooms_list", prefix: "12", roomIds: ["1234", "1299"] }));
+    expect((client as any).getRoomsList()).toEqual({ prefix: "12", roomIds: ["1234", "1299"] });
+  });
 });

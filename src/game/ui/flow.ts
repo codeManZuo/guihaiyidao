@@ -1,5 +1,7 @@
+export type MenuPage = "main" | "create" | "join";
+
 export type FlowState =
-  | { screen: "menu" }
+  | { screen: "menu"; page: MenuPage }
   | { screen: "leaderboard" }
   | { screen: "single" }
   | {
@@ -10,6 +12,8 @@ export type FlowState =
 
 export type FlowAction =
   | { type: "menu.single" }
+  | { type: "menu.create" }
+  | { type: "menu.join" }
   | { type: "menu.online" }
   | { type: "nav.menu" }
   | { type: "nav.leaderboard" }
@@ -18,13 +22,19 @@ export type FlowAction =
 
 export function createInitialFlow(params: { url: string }): FlowState {
   void params.url;
-  return { screen: "menu" };
+  return { screen: "menu", page: "main" };
 }
 
 export function reduceFlow(state: FlowState, action: FlowAction): FlowState {
   switch (action.type) {
     case "menu.single":
       return { screen: "single" };
+    case "menu.create":
+      if (state.screen !== "menu") return state;
+      return { screen: "menu", page: "create" };
+    case "menu.join":
+      if (state.screen !== "menu") return state;
+      return { screen: "menu", page: "join" };
     case "menu.online":
       return {
         screen: "online",
@@ -32,7 +42,7 @@ export function reduceFlow(state: FlowState, action: FlowAction): FlowState {
         roomId: ""
       };
     case "nav.menu":
-      return { screen: "menu" };
+      return { screen: "menu", page: "main" };
     case "nav.leaderboard":
       return { screen: "leaderboard" };
     case "online.playing":
