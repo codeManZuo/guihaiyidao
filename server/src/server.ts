@@ -1,4 +1,6 @@
 import { WebSocketServer, type RawData, type WebSocket } from "ws";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import path from "node:path";
 import { decode, encode, type ErrorMessageV2, type JoinResultV2, type RoomsListV2, type Seat, type StateMessageV2 } from "./protocol";
 import { RoomStore, type Room } from "./rooms";
 import { applyInput, computeWinner, tick } from "./gameSim";
@@ -67,8 +69,90 @@ function broadcastState(room: Room): void {
   for (const ws of room.sockets.values()) ws.send(raw);
 }
 
+function readTextFileSafe(filePath: string): string | null {
+  try {
+    return readFileSync(filePath, "utf8");
+  } catch {
+    return null;
+  }
+}
+
+function findGitDirFrom(startDir: string): string | null {
+  let dir = startDir;
+  for (let i = 0; i < 8; i += 1) {
+    const candidate = path.join(dir, ".git");
+    if (existsSync(candidate)) {
+      const stat = (() => {
+        try {
+          return statSync(candidate);
+        } catch {
+          return null;
+        }
+      })();
+      if (stat && stat.isDirectory()) return candidate;
+      const raw = readTextFileSafe(candidate);
+      if (raw) {
+        const m = raw.trim().match(/^gitdir:\s*(.+)\s*$/i);
+        if (m) {
+          const gitdir = m[1]!.trim();
+          return path.isAbsolute(gitdir) ? gitdir : path.resolve(dir, gitdir);
+        }
+      }
+      return null;
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return null;
+}
+
+function readGitHeadSha(gitDir: string): string | null {
+  const head = readTextFileSafe(path.join(gitDir, "HEAD"))?.trim();
+  if (!head) return null;
+  if (!head.startsWith("ref:")) {
+    const sha = head.trim();
+    return /^[0-9a-f]{40}$/i.test(sha) ? sha : null;
+  }
+  const ref = head.replace(/^ref:\s*/i, "").trim();
+  const refPath = path.join(gitDir, ref);
+  const refSha = readTextFileSafe(refPath)?.trim();
+  if (refSha && /^[0-9a-f]{40}$/i.test(refSha)) return refSha;
+  const packed = readTextFileSafe(path.join(gitDir, "packed-refs"));
+  if (!packed) return null;
+  for (const line of packed.split("\n")) {
+    const t = line.trim();
+    if (t.length === 0) continue;
+    if (t.startsWith("#")) continue;
+    if (t.startsWith("^")) continue;
+    const parts = t.split(" ");
+    if (parts.length !== 2) continue;
+    const [sha, name] = parts;
+    if (name === ref && sha && /^[0-9a-f]{40}$/i.test(sha)) return sha;
+  }
+  return null;
+}
+
+function resolveServerVersion(): string {
+  const envVersion =
+    process.env.GUIHAIYIDAO_VERSION ||
+    process.env.GIT_SHA ||
+    process.env.GIT_COMMIT ||
+    process.env.SOURCE_VERSION ||
+    "";
+  if (envVersion.trim().length > 0) return envVersion.trim();
+
+  const gitDir = findGitDirFrom(process.cwd());
+  if (!gitDir) return "unknown";
+  const sha = readGitHeadSha(gitDir);
+  if (!sha) return "unknown";
+  return sha.slice(0, 12);
+}
+
 export function startWsServer(): void {
   const port = Number(process.env.PORT || 8787);
+  const version = resolveServerVersion();
+  console.log(`ws server version ${version}`);
   const wss = new WebSocketServer({ port });
   const config = loadGameConfigFromRepoRoot();
   const store = new RoomStore(config);
