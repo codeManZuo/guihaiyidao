@@ -18,6 +18,7 @@ export class OnlineClient {
   private flushInputTimer: ReturnType<typeof setTimeout> | null = null;
   private joined: { roomId: string; playerId: "p1" | "p2"; isHost: boolean } | null = null;
   private lastState: StateMessageV2 | null = null;
+  private lastStateRaw: string | null = null;
   private lastError: ErrorMessageV2 | null = null;
   private lastRoomsList: { prefix: string; roomIds: string[] } | null = null;
   private seq = 0;
@@ -42,12 +43,17 @@ export class OnlineClient {
       this.scheduleFlushInput(0);
     };
     ws.onmessage = (ev: { data: unknown }) => {
-      const msg = decodeMessage(String(ev.data)) as WireMessage;
+      const raw = String(ev.data);
+      const kind = quickTypeFromRaw(raw);
+      if (kind === "state") {
+        this.lastStateRaw = raw;
+        return;
+      }
+      const msg = decodeMessage(raw) as WireMessage;
       if (msg.type === "joined") {
         const j = msg as JoinResultV2;
         this.joined = { roomId: j.roomId, playerId: j.playerId, isHost: j.isHost };
       }
-      if (msg.type === "state") this.lastState = msg as StateMessageV2;
       if (msg.type === "rooms_list") {
         const list = msg as RoomsListV2;
         this.lastRoomsList = { prefix: list.prefix, roomIds: list.roomIds };
@@ -66,6 +72,8 @@ export class OnlineClient {
     this.inputOutbox = [];
     this.flushInputTimer = null;
     this.lastRoomsList = null;
+    this.lastStateRaw = null;
+    this.lastState = null;
   }
 
   createRoom(params: { roomId?: string; difficulty: Difficulty }): void {
@@ -121,6 +129,14 @@ export class OnlineClient {
   }
 
   getState(): StateMessageV2 | null {
+    if (this.lastStateRaw) {
+      const raw = this.lastStateRaw;
+      this.lastStateRaw = null;
+      try {
+        const msg = decodeMessage(raw) as WireMessage;
+        if (msg.type === "state") this.lastState = msg as StateMessageV2;
+      } catch {}
+    }
     return this.lastState;
   }
 
@@ -183,4 +199,8 @@ export class OnlineClient {
 
     if (this.inputOutbox.length > 0) this.scheduleFlushInput(delayMs);
   }
+}
+
+function quickTypeFromRaw(raw: string): "state" | "other" {
+  return raw.includes("\"type\":\"state\"") ? "state" : "other";
 }

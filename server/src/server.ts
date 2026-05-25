@@ -242,7 +242,7 @@ export function startWsServer(): void {
 
       if (msg.type === "input") {
         applyInput(room.sim, conn.seat, msg.side);
-        broadcastState(room);
+        return;
       }
     });
 

@@ -102,4 +102,23 @@ describe("OnlineClient v2", () => {
     ws.message(JSON.stringify({ v: 2, type: "rooms_list", prefix: "12", roomIds: ["1234", "1299"] }));
     expect((client as any).getRoomsList()).toEqual({ prefix: "12", roomIds: ["1234", "1299"] });
   });
+
+  it("stores only the latest raw state and decodes at getState time", () => {
+    const ws = new FakeWebSocket();
+    const client = new (OnlineClient as any)({
+      url: "ws://example/ws",
+      wsFactory: () => ws as any
+    });
+
+    (client as any).connect();
+    ws.open();
+    ws.message(JSON.stringify({ v: 2, type: "joined", roomId: "1234", playerId: "p1", isHost: true }));
+
+    ws.message(JSON.stringify({ v: 2, type: "state", roomId: "1234", serverTimeMs: 1, status: "lobby", hostPlayerId: "p1", difficulty: "normal", p1: { present: true, online: true, ready: false, score: 1, timeMs: 1, status: "alive", side: "left", obstacleSide: null, upcomingObstacles: [], upcomingObstacleStyles: [] }, p2: { present: false, online: false, ready: false, score: 0, timeMs: 1, status: "alive", side: "left", obstacleSide: null, upcomingObstacles: [], upcomingObstacleStyles: [] }, winner: null }));
+    ws.message(JSON.stringify({ v: 2, type: "state", roomId: "1234", serverTimeMs: 2, status: "lobby", hostPlayerId: "p1", difficulty: "normal", p1: { present: true, online: true, ready: false, score: 2, timeMs: 1, status: "alive", side: "right", obstacleSide: null, upcomingObstacles: [], upcomingObstacleStyles: [] }, p2: { present: false, online: false, ready: false, score: 0, timeMs: 1, status: "alive", side: "left", obstacleSide: null, upcomingObstacles: [], upcomingObstacleStyles: [] }, winner: null }));
+
+    const state = (client as any).getState();
+    expect(state.p1.score).toBe(2);
+    expect(state.p1.side).toBe("right");
+  });
 });
