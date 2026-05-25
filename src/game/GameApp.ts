@@ -375,7 +375,7 @@ export class GameApp {
         const meView = me === "p1" ? state.p1 : state.p2;
         if (meView.status === "dead") return;
         this.onlineMySidePrediction = { side, untilPerfMs: performance.now() + 800 };
-        this.renderer.triggerOnlineChop("p2", side);
+        this.renderer.triggerOnlineChop(me, side);
         this.online?.sendInput(side);
         this.audio.playChop();
         if (this.vibrationEnabled) navigator.vibrate?.(12);

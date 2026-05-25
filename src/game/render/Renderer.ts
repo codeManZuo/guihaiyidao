@@ -22,6 +22,7 @@ export class Renderer {
   private p2PendingChopFx = false;
 
   private particles: Particle[] = [];
+  private particlesPip: Particle[] = [];
   private bgTimeMs = 0;
   private clouds: Cloud[] = [];
   private birds: Bird[] = [];
@@ -185,12 +186,14 @@ export class Renderer {
 
     if (this.p1PendingChopFx) {
       const pos = seatChopPos("p1");
-      this.spawnChopFx(pos.x, pos.y, this.p1ChopSide);
+      if (mainSeat === "p1") this.spawnChopFx(pos.x, pos.y, this.p1ChopSide);
+      else if (pipEnabled) this.spawnChopFxPip(pos.x, pos.y, this.p1ChopSide);
       this.p1PendingChopFx = false;
     }
     if (this.p2PendingChopFx) {
       const pos = seatChopPos("p2");
-      this.spawnChopFx(pos.x, pos.y, this.p2ChopSide);
+      if (mainSeat === "p2") this.spawnChopFx(pos.x, pos.y, this.p2ChopSide);
+      else if (pipEnabled) this.spawnChopFxPip(pos.x, pos.y, this.p2ChopSide);
       this.p2PendingChopFx = false;
     }
     if (pipEnabled) {
@@ -231,6 +234,14 @@ export class Renderer {
     }
 
     this.drawParticles(ctx);
+    if (pipEnabled) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pipPx.x, pipPx.y, pipPx.w, pipPx.h);
+      ctx.clip();
+      this.drawParticlesPip(ctx);
+      ctx.restore();
+    }
     this.blitToScreen(frame, w, h);
   }
 
@@ -390,6 +401,16 @@ export class Renderer {
     }
     this.particles = this.particles.filter((p) => p.lifeMs > 0 && p.y < 2000);
     if (this.particles.length > 120) this.particles.splice(0, this.particles.length - 120);
+
+    for (const p of this.particlesPip) {
+      p.lifeMs -= dtMs;
+      p.vy += 0.0018 * dtMs;
+      p.x += p.vx * dtMs;
+      p.y += p.vy * dtMs;
+      p.rot += p.vr * dtMs;
+    }
+    this.particlesPip = this.particlesPip.filter((p) => p.lifeMs > 0 && p.y < 2000);
+    if (this.particlesPip.length > 120) this.particlesPip.splice(0, this.particlesPip.length - 120);
   }
 
   private spawnChopFx(x: number, y: number, side: "left" | "right"): void {
@@ -421,8 +442,57 @@ export class Renderer {
     });
   }
 
+  private spawnChopFxPip(x: number, y: number, side: "left" | "right"): void {
+    const dir = side === "left" ? -1 : 1;
+    for (let i = 0; i < 10; i += 1) {
+      const s = rand01(hash32((i + 1) * 991 + Math.floor(x * 3)));
+      const a = (-0.6 + s * 1.2) * (side === "left" ? 1 : -1);
+      const speed = 0.08 + rand01(hash32(i * 31 + 17)) * 0.08;
+      this.particlesPip.push({
+        kind: "chip",
+        x,
+        y,
+        vx: Math.cos(a) * speed * dir,
+        vy: -0.12 - rand01(hash32(i * 73 + 19)) * 0.1,
+        rot: 0,
+        vr: (-0.01 + rand01(hash32(i * 61 + 23)) * 0.02) * dir,
+        lifeMs: 260 + rand01(hash32(i * 29 + 13)) * 260
+      });
+    }
+    this.particlesPip.push({
+      kind: "log",
+      x,
+      y,
+      vx: 0.12 * dir,
+      vy: -0.18,
+      rot: 0,
+      vr: 0.012 * dir,
+      lifeMs: 900
+    });
+  }
+
   private drawParticles(ctx: CanvasRenderingContext2D): void {
     for (const p of this.particles) {
+      const t = Math.max(0, Math.min(1, p.lifeMs / 900));
+      ctx.save();
+      ctx.globalAlpha = p.kind === "log" ? 1 : 0.9 * t;
+      if (p.kind === "chip") {
+        ctx.fillStyle = "#caa26a";
+        ctx.fillRect(Math.round(p.x), Math.round(p.y), 1, 1);
+      } else {
+        ctx.translate(Math.round(p.x), Math.round(p.y));
+        ctx.rotate(p.rot);
+        ctx.fillStyle = "#9a6a3f";
+        ctx.fillRect(-3, -2, 6, 4);
+        ctx.fillStyle = "#d9c09a";
+        ctx.fillRect(2, -1, 1, 2);
+      }
+      ctx.restore();
+    }
+  }
+
+  private drawParticlesPip(ctx: CanvasRenderingContext2D): void {
+    for (const p of this.particlesPip) {
       const t = Math.max(0, Math.min(1, p.lifeMs / 900));
       ctx.save();
       ctx.globalAlpha = p.kind === "log" ? 1 : 0.9 * t;
