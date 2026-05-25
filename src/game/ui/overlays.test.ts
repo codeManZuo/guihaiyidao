@@ -71,6 +71,7 @@ describe("ui overlays", () => {
     expect(overlays.hud.textContent).toContain("对方");
     expect(overlays.hud.textContent).toContain("我");
     expect(overlays.hud.textContent).toContain("ABCD");
+    expect(overlays.onlinePipToggleBtn.style.display).not.toBe("none");
   });
 
   it("shows result overlay with actions", () => {

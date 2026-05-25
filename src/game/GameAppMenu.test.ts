@@ -113,6 +113,6 @@ describe("GameApp menu", () => {
 
     expect(renderOnlineSpy).toHaveBeenCalledTimes(1);
     const arg = renderOnlineSpy.mock.calls[0]?.[0];
-    expect(arg.p2.side).toBe("right");
+    expect(arg.p1.side).toBe("right");
   });
 });

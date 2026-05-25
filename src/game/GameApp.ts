@@ -1,6 +1,6 @@
 import { FixedTimestepLoop } from "./engine/FixedTimestepLoop";
 import { attachTapHalvesInput } from "./input/TapHalvesInput";
-import { Renderer } from "./render/Renderer";
+import { Renderer, computeOnlinePipRect } from "./render/Renderer";
 import { chopSinglePlayer, createSinglePlayerRuntime, tickSinglePlayer } from "./state/singlePlayer";
 import { AudioBank } from "./audio/AudioBank";
 import { OnlineClient } from "./net/OnlineClient";
@@ -26,6 +26,7 @@ export class GameApp {
   private online: OnlineClient | null = null;
   private flow: FlowState;
   private onlineMySidePrediction: { side: Side; untilPerfMs: number } | null = null;
+  private onlineFocus: "me" | "other" = "me";
   private leaderboardEntries: LeaderboardEntry[] = [];
   private singleResult: { bestScore: number; isNewRecord: boolean } | null = null;
   private difficulty: Difficulty = "normal";
@@ -125,6 +126,15 @@ export class GameApp {
           }
 
           if (this.flow.screen === "online") {
+            const pipRect = computeOnlinePipRect(
+              Math.max(1, this.overlays.canvas.clientWidth),
+              Math.max(1, this.overlays.canvas.clientHeight)
+            );
+            this.overlays.onlinePipToggleBtn.style.left = `${pipRect.x}px`;
+            this.overlays.onlinePipToggleBtn.style.top = `${pipRect.y}px`;
+            this.overlays.onlinePipToggleBtn.style.width = `${pipRect.w}px`;
+            this.overlays.onlinePipToggleBtn.style.height = `${pipRect.h}px`;
+
             const s = this.online?.getState();
             if (s) {
               const joined = this.online?.getJoined();
@@ -134,11 +144,13 @@ export class GameApp {
               const nowPerfMs = performance.now();
               if (this.onlineMySidePrediction && nowPerfMs > this.onlineMySidePrediction.untilPerfMs) this.onlineMySidePrediction = null;
               if (s.status !== "playing") this.onlineMySidePrediction = null;
-              if (me && right.status === "dead") this.onlineMySidePrediction = null;
+              const meView = me === "p1" ? s.p1 : me === "p2" ? s.p2 : null;
+              if (me && meView?.status === "dead") this.onlineMySidePrediction = null;
               const predictedMySide = me ? this.onlineMySidePrediction?.side ?? null : null;
-              if (me && predictedMySide && right.side === predictedMySide) this.onlineMySidePrediction = null;
-              const rightForRender = predictedMySide ? { ...right, side: predictedMySide } : right;
-              this.renderer.renderOnline({ status: s.status, p1: left, p2: rightForRender });
+              if (me && predictedMySide && meView?.side === predictedMySide) this.onlineMySidePrediction = null;
+              const p1ForRender = me === "p1" && predictedMySide ? { ...s.p1, side: predictedMySide } : s.p1;
+              const p2ForRender = me === "p2" && predictedMySide ? { ...s.p2, side: predictedMySide } : s.p2;
+              this.renderer.renderOnline({ status: s.status, p1: p1ForRender, p2: p2ForRender, meSeat: me, focus: this.onlineFocus });
               const max = this.config.time.maxMs || 1;
               const leftRatio = left.timeMs <= 0 ? 0 : left.timeMs / max;
               const rightRatio = right.timeMs <= 0 ? 0 : right.timeMs / max;
@@ -176,13 +188,16 @@ export class GameApp {
               if (s.status === "finished") {
                 const score = me === "p1" ? s.p1.score : me === "p2" ? s.p2.score : 0;
                 const title = s.winner === "draw" ? "平局" : me && s.winner === me ? "胜利" : "失败";
-                showResult(this.overlays, { score, title, subtitle: `左 ${left.score} vs 右 ${right.score}` });
+                const subtitle = me ? `我 ${right.score} vs 对方 ${left.score}` : `玩家1 ${s.p1.score} vs 玩家2 ${s.p2.score}`;
+                showResult(this.overlays, { score, title, subtitle });
               }
             } else {
               this.renderer.renderOnline({
                 status: "lobby",
                 p1: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null },
-                p2: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null }
+                p2: { score: 0, timeMs: 0, status: "alive", side: "left", obstacleSide: null },
+                meSeat: this.online?.getJoined()?.playerId ?? null,
+                focus: this.onlineFocus
               });
               const roomId = this.online?.getJoined()?.roomId ?? "";
               showHudOnline(this.overlays, {
@@ -235,6 +250,7 @@ export class GameApp {
       onSingle: () => {
         this.online?.disconnect();
         this.online = null;
+        this.onlineFocus = "me";
         this.flow = reduceFlow(this.flow, { type: "menu.single" });
         const seed = (Math.random() * 1e9) | 0;
         loadGameConfig().then((cfg) => {
@@ -245,6 +261,7 @@ export class GameApp {
       },
       onOpenCreate: () => {
         this.online?.clearError();
+        this.onlineFocus = "me";
         this.flow = reduceFlow(this.flow, { type: "menu.create" });
         this.overlays.menuCreateRoomInput.focus();
       },
@@ -253,6 +270,7 @@ export class GameApp {
         this.online = new OnlineClient({ url: this.wsUrl() });
         this.online.connect();
         this.online.clearError();
+        this.onlineFocus = "me";
         this.flow = reduceFlow(this.flow, { type: "menu.join" });
         this.overlays.menuJoinRoomInput.focus();
       },
@@ -261,6 +279,7 @@ export class GameApp {
         this.online = new OnlineClient({ url: this.wsUrl() });
         this.online.connect();
         this.online.clearError();
+        this.onlineFocus = "me";
         try {
           localStorage.setItem("game.onlineDifficulty", params.difficulty);
         } catch {}
@@ -271,6 +290,7 @@ export class GameApp {
         this.online = new OnlineClient({ url: this.wsUrl() });
         this.online.connect();
         this.online.clearError();
+        this.onlineFocus = "me";
         this.online?.joinRoom(roomId);
       },
       onQueryRooms: (prefix) => {
@@ -311,8 +331,12 @@ export class GameApp {
       onMenu: () => {
         this.online?.disconnect();
         this.online = null;
+        this.onlineFocus = "me";
         this.flow = reduceFlow(this.flow, { type: "nav.menu" });
         this.singleResult = null;
+      },
+      onToggleOnlineFocus: () => {
+        this.onlineFocus = this.onlineFocus === "me" ? "other" : "me";
       },
       onDifficulty: (difficulty) => {
         this.difficulty = difficulty;
@@ -402,6 +426,6 @@ export class GameApp {
 }
 
 function applyDifficulty(cfg: GameConfig, difficulty: Difficulty): GameConfig {
-  const decayScale = difficulty === "easy" ? 1.5 : difficulty === "hard" ? 2.5 : 2;
+  const decayScale = difficulty === "easy" ? 1.2 : difficulty === "hard" ? 2.5 : 2;
   return { ...cfg, time: { ...cfg.time, decayScale } };
 }

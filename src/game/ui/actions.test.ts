@@ -28,6 +28,7 @@ describe("overlay actions", () => {
     const onOpenJoin = vi.fn();
     const onCreateRoomConfirm = vi.fn();
     const onJoinRoomConfirm = vi.fn();
+    const onToggleOnlineFocus = vi.fn();
 
     const cleanup = attachOverlayActions(overlays, {
       onSingle: () => {},
@@ -35,6 +36,7 @@ describe("overlay actions", () => {
       onOpenJoin,
       onCreateRoomConfirm,
       onJoinRoomConfirm,
+      onToggleOnlineFocus,
       onRestart: () => {},
       onMenu: () => {}
     } as any);
@@ -53,6 +55,9 @@ describe("overlay actions", () => {
     overlays.menuJoinRoomInput.value = "1299";
     overlays.menuJoinConfirmBtn.click();
     expect(onJoinRoomConfirm).toHaveBeenCalledWith("1299");
+
+    overlays.onlinePipToggleBtn.dispatchEvent(new Event("pointerdown", { bubbles: true, cancelable: true }));
+    expect(onToggleOnlineFocus).toHaveBeenCalledTimes(1);
 
     cleanup();
   });

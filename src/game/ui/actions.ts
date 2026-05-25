@@ -15,6 +15,7 @@ export function attachOverlayActions(
     onQueryRooms?: (prefix: string) => void;
     onOnlineReady?: () => void;
     onOnlineStart?: () => void;
+    onToggleOnlineFocus?: () => void;
     onRestart: () => void;
     onMenu: () => void;
     onLeaderboard?: () => void;
@@ -27,6 +28,10 @@ export function attachOverlayActions(
 ): () => void {
   const onUserInteract = () => handlers.onUserInteract?.();
   const stopPointer = (e: Event) => {
+    if ("stopPropagation" in e) (e as any).stopPropagation();
+  };
+  const stopAndPrevent = (e: Event) => {
+    if ("preventDefault" in e) (e as any).preventDefault();
     if ("stopPropagation" in e) (e as any).stopPropagation();
   };
   const onSingle = () => {
@@ -156,6 +161,12 @@ export function attachOverlayActions(
     handlers.onToggleMute?.(nextMuted);
   };
 
+  const onToggleOnlineFocus = (e: Event) => {
+    stopAndPrevent(e);
+    onUserInteract();
+    handlers.onToggleOnlineFocus?.();
+  };
+
   overlays.menuSingleBtn.addEventListener("click", onSingle);
   overlays.menuLeaderboardBtn.addEventListener("click", onLeaderboard);
   overlays.onlineReadyBtn.addEventListener("click", onOnlineReady);
@@ -182,6 +193,7 @@ export function attachOverlayActions(
   overlays.menuCreateRoomInput.addEventListener("input", onCreateRoomInput);
   overlays.menuJoinRoomInput.addEventListener("input", onJoinRoomInput);
   overlays.menuJoinSuggestions.addEventListener("click", onJoinSuggestionClick);
+  overlays.onlinePipToggleBtn.addEventListener("pointerdown", onToggleOnlineFocus as any, { passive: false } as any);
   onDifficulty();
   onChopSoundStyle();
 
@@ -212,5 +224,6 @@ export function attachOverlayActions(
     overlays.menuCreateRoomInput.removeEventListener("input", onCreateRoomInput);
     overlays.menuJoinRoomInput.removeEventListener("input", onJoinRoomInput);
     overlays.menuJoinSuggestions.removeEventListener("click", onJoinSuggestionClick);
+    overlays.onlinePipToggleBtn.removeEventListener("pointerdown", onToggleOnlineFocus as any);
   };
 }

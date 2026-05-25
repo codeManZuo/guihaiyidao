@@ -114,6 +114,8 @@ export class Renderer {
 
   renderOnline(state: {
     status: "lobby" | "playing" | "finished";
+    meSeat?: "p1" | "p2" | null;
+    focus?: "me" | "other";
     p1: {
       score: number;
       timeMs: number;
@@ -148,14 +150,14 @@ export class Renderer {
       this.lastP2Score = state.p2.score;
     }
 
-    if (this.p1PendingChopFx) {
-      this.spawnChopFx(pw * 0.25, m.groundY - 22, this.p1ChopSide);
-      this.p1PendingChopFx = false;
-    }
-    if (this.p2PendingChopFx) {
-      this.spawnChopFx(pw * 0.75, m.groundY - 22, this.p2ChopSide);
-      this.p2PendingChopFx = false;
-    }
+    const meSeat = state.meSeat ?? null;
+    const otherSeat = meSeat === "p1" ? "p2" : meSeat === "p2" ? "p1" : "p2";
+    const focus = state.focus ?? "me";
+    const mainSeat: "p1" | "p2" =
+      focus === "me" && meSeat ? meSeat : focus === "other" && meSeat ? otherSeat : "p1";
+    const pipSeat: "p1" | "p2" = mainSeat === "p1" ? "p2" : "p1";
+    const main = mainSeat === "p1" ? state.p1 : state.p2;
+    const pip = pipSeat === "p1" ? state.p1 : state.p2;
 
     this.tickAmbient(dtMs, pw, ph);
     this.stepFx(dtMs);
@@ -165,10 +167,55 @@ export class Renderer {
     ctx.clearRect(0, 0, frame.pw, frame.ph);
     this.drawBackground(ctx, frame.pw, frame.ph);
 
-    const leftX = frame.pw * 0.25;
-    const rightX = frame.pw * 0.75;
-    this.drawOnlinePlayer(ctx, leftX, m, state.p1);
-    this.drawOnlinePlayer(ctx, rightX, m, state.p2);
+    const mainTreeX = Math.round(frame.pw / 2);
+    this.drawOnlinePlayer(ctx, mainTreeX, m, main, mainSeat, onlineTorsoColor(mainSeat, meSeat));
+
+    const pipRect = computeOnlinePipRect(w, h);
+    const pipPx = toPixelRect(pipRect, frame);
+    const pipEnabled = pipPx.w > 40 && pipPx.h > 40;
+    const pipMetrics = pipEnabled ? this.treeMetrics(pipPx.h) : null;
+    const pipTreeAbsX = pipEnabled ? pipPx.x + Math.round(pipPx.w / 2) : 0;
+    const pipChopAbsY = pipEnabled && pipMetrics ? pipPx.y + pipMetrics.groundY - 22 : 0;
+
+    const seatChopPos = (seat: "p1" | "p2") => {
+      if (seat === mainSeat) return { x: mainTreeX, y: m.groundY - 22 };
+      if (pipEnabled) return { x: pipTreeAbsX, y: pipChopAbsY };
+      return { x: mainTreeX, y: m.groundY - 22 };
+    };
+
+    if (this.p1PendingChopFx) {
+      const pos = seatChopPos("p1");
+      this.spawnChopFx(pos.x, pos.y, this.p1ChopSide);
+      this.p1PendingChopFx = false;
+    }
+    if (this.p2PendingChopFx) {
+      const pos = seatChopPos("p2");
+      this.spawnChopFx(pos.x, pos.y, this.p2ChopSide);
+      this.p2PendingChopFx = false;
+    }
+    if (pipEnabled) {
+      ctx.save();
+      ctx.fillStyle = "rgba(0,0,0,0.28)";
+      ctx.fillRect(pipPx.x - 2, pipPx.y - 2, pipPx.w + 4, pipPx.h + 4);
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(pipPx.x - 2, pipPx.y - 2, pipPx.w + 4, pipPx.h + 4);
+      ctx.fillStyle = "rgba(0,0,0,0.10)";
+      ctx.fillRect(pipPx.x, pipPx.y, pipPx.w, pipPx.h);
+      ctx.beginPath();
+      ctx.rect(pipPx.x, pipPx.y, pipPx.w, pipPx.h);
+      ctx.clip();
+      ctx.translate(pipPx.x, pipPx.y);
+      this.drawOnlinePlayer(
+        ctx,
+        Math.round(pipPx.w / 2),
+        pipMetrics as any,
+        pip,
+        pipSeat,
+        onlineTorsoColor(pipSeat, meSeat)
+      );
+      ctx.restore();
+    }
 
     if (state.status === "lobby") {
       const sctx = this.screenCtx();
@@ -234,7 +281,9 @@ export class Renderer {
       obstacleSide: "left" | "right" | null;
       upcomingObstacles?: Array<"left" | "right" | null>;
       upcomingObstacleStyles?: number[];
-    }
+    },
+    seat: "p1" | "p2",
+    torsoColor?: string
   ): void {
     this.drawSimpleTree(ctx, treeX, m);
 
@@ -258,27 +307,13 @@ export class Renderer {
     ctx.save();
     const px = p.side === "left" ? treeX - 36 : treeX + 36;
     ctx.globalAlpha = p.status === "dead" ? 0.4 : 1;
-    const isLeftTree = treeX < (this.pixelCanvas?.width || 1) / 2;
-    const swing01 = isLeftTree
-      ? this.p1SwingMs <= 0
-        ? 0
-        : 1 - this.p1SwingMs / 220
-      : this.p2SwingMs <= 0
-        ? 0
-        : 1 - this.p2SwingMs / 220;
-    const torsoColor = isLeftTree ? "#b04a4a" : undefined;
+    const swingMs = seat === "p1" ? this.p1SwingMs : this.p2SwingMs;
+    const swing01 = swingMs <= 0 ? 0 : 1 - swingMs / 220;
+    const cutFlashMs = seat === "p1" ? this.p1CutFlashMs : this.p2CutFlashMs;
     this.drawLumberjack(ctx, px, m.groundY, p.side, swing01, p.status === "dead" ? 0.5 : 1, { torsoColor });
-
-    if (isLeftTree) {
-      if (this.p1CutFlashMs > 0) {
-        const t = this.p1CutFlashMs / 140;
-        this.drawCutFlash(ctx, treeX, m.groundY - m.segmentHeight, t);
-      }
-    } else {
-      if (this.p2CutFlashMs > 0) {
-        const t = this.p2CutFlashMs / 140;
-        this.drawCutFlash(ctx, treeX, m.groundY - m.segmentHeight, t);
-      }
+    if (cutFlashMs > 0) {
+      const t = cutFlashMs / 140;
+      this.drawCutFlash(ctx, treeX, m.groundY - m.segmentHeight, t);
     }
     ctx.restore();
   }
@@ -709,6 +744,34 @@ export class Renderer {
     ctx.fillRect(Math.round(trunkX - 10), Math.round(y + 9), 20, 1);
     ctx.restore();
   }
+}
+
+export function computeOnlinePipRect(w: number, h: number): { x: number; y: number; w: number; h: number } {
+  const margin = 12;
+  const { pw: bpw, ph: bph } = pixelBufferSize(w, h);
+  const scale = Math.max(1, Math.floor(Math.min(w / bpw, h / bph)));
+  const ox = Math.floor((w - bpw * scale) / 2);
+  const oy = Math.floor((h - bph * scale) / 2);
+  const pipW = Math.round(Math.max(110, Math.min(180, w * 0.34)));
+  const pipH = Math.round(Math.max(90, Math.min(150, h * 0.26)));
+  return { x: ox + margin, y: oy + margin, w: pipW, h: pipH };
+}
+
+function onlineTorsoColor(seat: "p1" | "p2", meSeat: "p1" | "p2" | null): string | undefined {
+  if (meSeat === "p1" || meSeat === "p2") return seat === meSeat ? undefined : "#b04a4a";
+  return seat === "p2" ? "#b04a4a" : undefined;
+}
+
+function toPixelRect(rect: { x: number; y: number; w: number; h: number }, frame: PixelFrame): { x: number; y: number; w: number; h: number } {
+  const x0 = Math.round((rect.x - frame.ox) / Math.max(1e-6, frame.scale));
+  const y0 = Math.round((rect.y - frame.oy) / Math.max(1e-6, frame.scale));
+  const w0 = Math.round(rect.w / Math.max(1e-6, frame.scale));
+  const h0 = Math.round(rect.h / Math.max(1e-6, frame.scale));
+  const x = Math.max(0, Math.min(frame.pw - 1, x0));
+  const y = Math.max(0, Math.min(frame.ph - 1, y0));
+  const w1 = Math.max(0, Math.min(frame.pw - x, w0));
+  const h1 = Math.max(0, Math.min(frame.ph - y, h0));
+  return { x, y, w: w1, h: h1 };
 }
 
 type TreeMetrics = {

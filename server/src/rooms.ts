@@ -177,7 +177,7 @@ function hashSeed(input: string): number {
 const MAX_ROOM_ID_ATTEMPTS = 25;
 
 function applyDifficulty(cfg: GameConfig, difficulty: Difficulty): GameConfig {
-  const decayScale = difficulty === "easy" ? 1.5 : difficulty === "hard" ? 2.5 : 2;
+  const decayScale = difficulty === "easy" ? 1.2 : difficulty === "hard" ? 2.5 : 2;
   return {
     ...cfg,
     time: {

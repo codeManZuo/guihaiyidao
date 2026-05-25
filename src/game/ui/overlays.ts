@@ -56,6 +56,7 @@ export type Overlays = {
   onlineLobbyError: HTMLDivElement;
   onlineReadyBtn: HTMLButtonElement;
   onlineStartBtn: HTMLButtonElement;
+  onlinePipToggleBtn: HTMLButtonElement;
 };
 
 export function createOverlays(doc: Document): Overlays {
@@ -74,6 +75,13 @@ export function createOverlays(doc: Document): Overlays {
   muteBtn.innerHTML =
     '<span class="mute-icon mute-icon-on" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11 5.5 7.7 8H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2.7L11 18.5a1 1 0 0 0 1.6-.8V6.3a1 1 0 0 0-1.6-.8ZM14.6 8.5a1 1 0 0 1 1.4 0 4 4 0 0 1 0 5.7 1 1 0 1 1-1.4-1.4 2 2 0 0 0 0-2.8 1 1 0 0 1 0-1.5ZM17.4 6.3a1 1 0 0 1 1.4 0 7 7 0 0 1 0 11.4 1 1 0 1 1-1.4-1.4 5 5 0 0 0 0-8.6 1 1 0 0 1 0-1.4Z"/></svg></span>' +
     '<span class="mute-icon mute-icon-off" aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M11 5.5 7.7 8H5a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h2.7L11 18.5a1 1 0 0 0 1.6-.8V6.3a1 1 0 0 0-1.6-.8ZM16.3 9.3a1 1 0 0 1 1.4 0L19 10.6l1.3-1.3a1 1 0 1 1 1.4 1.4L20.4 12l1.3 1.3a1 1 0 0 1-1.4 1.4L19 13.4l-1.3 1.3a1 1 0 0 1-1.4-1.4l1.3-1.3-1.3-1.3a1 1 0 0 1 0-1.4Z"/></svg></span>';
+
+  const onlinePipToggleBtn = doc.createElement("button");
+  onlinePipToggleBtn.type = "button";
+  onlinePipToggleBtn.className = "online-pip-toggle";
+  onlinePipToggleBtn.dataset.action = "online.pip.toggle";
+  onlinePipToggleBtn.setAttribute("aria-label", "切换视角");
+  onlinePipToggleBtn.style.display = "none";
 
   const menu = doc.createElement("div");
   menu.className = "overlay overlay-menu";
@@ -508,7 +516,7 @@ export function createOverlays(doc: Document): Overlays {
   boardCard.append(boardTitle, boardTabs, boardList, boardBack);
   leaderboard.appendChild(boardCard);
 
-  root.append(canvas, menu, hud, leaderboard, result, muteBtn);
+  root.append(canvas, menu, hud, leaderboard, result, muteBtn, onlinePipToggleBtn);
 
   const overlays: Overlays = {
     root,
@@ -567,7 +575,8 @@ export function createOverlays(doc: Document): Overlays {
     onlineLobbyOther,
     onlineLobbyError,
     onlineReadyBtn,
-    onlineStartBtn
+    onlineStartBtn,
+    onlinePipToggleBtn
   };
   showMenu(overlays);
   return overlays;
@@ -587,6 +596,7 @@ export function showMenu(
   overlays.hud.style.display = "none";
   overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
+  overlays.onlinePipToggleBtn.style.display = "none";
 
   const page: MenuPage = params?.page ?? "main";
   overlays.menuMainPanel.style.display = page === "main" ? "flex" : "none";
@@ -625,6 +635,7 @@ export function showHudSingle(overlays: Overlays, params: { score: number; timeR
   overlays.hud.style.display = "flex";
   overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
+  overlays.onlinePipToggleBtn.style.display = "none";
   overlays.singleHud.style.display = "flex";
   overlays.onlineHud.style.display = "none";
   overlays.scoreValue.textContent = String(params.score);
@@ -653,6 +664,7 @@ export function showHudOnline(
   overlays.hud.style.display = "flex";
   overlays.leaderboard.style.display = "none";
   overlays.result.style.display = "none";
+  overlays.onlinePipToggleBtn.style.display = "block";
   overlays.singleHud.style.display = "none";
   overlays.onlineHud.style.display = "flex";
 
@@ -691,6 +703,7 @@ export function showLeaderboard(
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "none";
   overlays.result.style.display = "none";
+  overlays.onlinePipToggleBtn.style.display = "none";
   overlays.leaderboard.style.display = "flex";
 
   overlays.leaderboardList.replaceChildren();
@@ -734,6 +747,7 @@ export function showResult(
   overlays.menu.style.display = "none";
   overlays.hud.style.display = "none";
   overlays.leaderboard.style.display = "none";
+  overlays.onlinePipToggleBtn.style.display = "none";
   overlays.result.style.display = "flex";
   overlays.resultTitle.textContent = params.title ?? "失败";
   const subtitle = params.subtitle?.trim();

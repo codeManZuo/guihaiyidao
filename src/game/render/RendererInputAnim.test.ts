@@ -9,7 +9,7 @@ describe("Renderer input-triggered chop animation", () => {
     expect((r as any).singleSwingMs).toBeGreaterThan(0);
   });
 
-  it("renders left online player with red torso", () => {
+  it("renders online opponent with red torso", () => {
     const canvas = document.createElement("canvas");
     const originalGetContext = HTMLCanvasElement.prototype.getContext;
     let currentFillStyle = "";
@@ -41,11 +41,13 @@ describe("Renderer input-triggered chop animation", () => {
 
     r.renderOnline({
       status: "playing",
+      meSeat: "p1",
+      focus: "me",
       p1: { score: 0, timeMs: 7000, status: "alive", side: "left", obstacleSide: null },
       p2: { score: 0, timeMs: 7000, status: "alive", side: "left", obstacleSide: null }
     });
 
-    expect(torsoColors[0]).toBe("#b04a4a");
+    expect(torsoColors).toContain("#b04a4a");
     HTMLCanvasElement.prototype.getContext = originalGetContext;
   });
 
@@ -71,6 +73,8 @@ describe("Renderer input-triggered chop animation", () => {
 
     r.renderOnline({
       status: "playing",
+      meSeat: "p1",
+      focus: "me",
       p1: {
         score: 0,
         timeMs: 7000,
