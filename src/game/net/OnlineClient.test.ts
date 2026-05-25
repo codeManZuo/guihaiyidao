@@ -8,6 +8,7 @@ class FakeWebSocket {
   static CLOSED = 3;
 
   readyState = FakeWebSocket.CONNECTING;
+  bufferedAmount = 0;
   sent: string[] = [];
   onopen: null | (() => void) = null;
   onmessage: null | ((ev: { data: unknown }) => void) = null;
@@ -68,6 +69,9 @@ describe("OnlineClient v2", () => {
     ws.message(JSON.stringify({ v: 2, type: "joined", roomId: "1234", playerId: "p2", isHost: false }));
 
     (client as any).sendInput("left");
+    expect(ws.sent.length).toBe(0);
+
+    (client as any).flushInput();
     expect(ws.sent.length).toBe(1);
 
     const msg = JSON.parse(ws.sent[0]) as any;

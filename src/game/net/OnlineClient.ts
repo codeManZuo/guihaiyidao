@@ -3,6 +3,7 @@ import type { Side } from "../state/types";
 
 type WebSocketLike = {
   readyState: number;
+  bufferedAmount?: number;
   send(data: string): void;
   close(): void;
   onopen: null | (() => void);
@@ -13,6 +14,8 @@ type WebSocketLike = {
 export class OnlineClient {
   private ws: WebSocketLike | null = null;
   private pending: string[] = [];
+  private inputOutbox: string[] = [];
+  private flushInputTimer: ReturnType<typeof setTimeout> | null = null;
   private joined: { roomId: string; playerId: "p1" | "p2"; isHost: boolean } | null = null;
   private lastState: StateMessageV2 | null = null;
   private lastError: ErrorMessageV2 | null = null;
@@ -36,6 +39,7 @@ export class OnlineClient {
 
     ws.onopen = () => {
       this.flushPending();
+      this.scheduleFlushInput(0);
     };
     ws.onmessage = (ev: { data: unknown }) => {
       const msg = decodeMessage(String(ev.data)) as WireMessage;
@@ -59,6 +63,8 @@ export class OnlineClient {
     this.ws?.close();
     this.ws = null;
     this.pending = [];
+    this.inputOutbox = [];
+    this.flushInputTimer = null;
     this.lastRoomsList = null;
   }
 
@@ -97,7 +103,7 @@ export class OnlineClient {
     if (!roomId) return;
     this.seq += 1;
     const perfNowMs = this.params.perfNowMs ?? (() => performance.now());
-    this.sendOrQueue(
+    this.inputOutbox.push(
       encodeMessage({
         v: 2,
         type: "input",
@@ -107,6 +113,7 @@ export class OnlineClient {
         clientTimeMs: Math.floor(perfNowMs())
       })
     );
+    this.scheduleFlushInput(0);
   }
 
   getJoined(): { roomId: string; playerId: "p1" | "p2"; isHost: boolean } | null {
@@ -142,5 +149,38 @@ export class OnlineClient {
     const pending = this.pending;
     this.pending = [];
     for (const raw of pending) this.ws.send(raw);
+  }
+
+  private scheduleFlushInput(delayMs: number): void {
+    if (this.flushInputTimer) return;
+    this.flushInputTimer = setTimeout(() => {
+      this.flushInputTimer = null;
+      this.flushInput();
+    }, delayMs);
+  }
+
+  private flushInput(): void {
+    const ws = this.ws;
+    if (!ws || ws.readyState !== 1) return;
+    if (this.inputOutbox.length === 0) return;
+
+    const maxBufferedAmount = 64 * 1024;
+    const maxSendsPerFlush = 6;
+    let sent = 0;
+    let delayMs = 0;
+
+    while (this.inputOutbox.length > 0 && sent < maxSendsPerFlush) {
+      const buffered = ws.bufferedAmount ?? 0;
+      if (buffered > maxBufferedAmount) {
+        delayMs = 50;
+        break;
+      }
+      const raw = this.inputOutbox.shift();
+      if (!raw) break;
+      ws.send(raw);
+      sent += 1;
+    }
+
+    if (this.inputOutbox.length > 0) this.scheduleFlushInput(delayMs);
   }
 }
